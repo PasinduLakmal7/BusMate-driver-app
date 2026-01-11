@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:driver_app/View/Auth/register.dart';
 import 'package:flutter/material.dart';
 import 'package:driver_app/Utils/colors.dart';
 import 'package:driver_app/View/home_screen.dart';
@@ -105,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DriverAppHomeScreen(),
+                              builder: (context) => DriverRegisterScreen(),
                             ),
                           );
                         },
