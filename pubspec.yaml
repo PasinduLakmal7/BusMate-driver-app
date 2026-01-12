@@ -72,6 +72,14 @@ flutter:
   assets:
     - assets/getBUS.png
     - assets/back.jpg
+    - assets/login.jpg
+    - assets/login3.webp
+    - assets/lang.webp
+    - assets/auth_sel.webp
+    - assets/1.webp
+    - assets/regi.avif
+    - assets/regi2.avif
+    - assets/regi3.avif
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

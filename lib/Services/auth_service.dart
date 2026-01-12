@@ -1,11 +1,9 @@
-import 'dart:math';
-
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'dart:io';
 
 import '../View/Auth/login.dart';
 import '../View/home_screen.dart';
@@ -18,13 +16,26 @@ class AuthService {
   /// Step 1: Send OTP to the phone number
   Future<void> registerDriver({
     required String name,
+    required String nic,
+    required String email,
+    required String password,
     required DateTime birth,
-    required File driverPhoto,   
+    required File driverPhoto,
     required String phone,
     required String vehicleType,
     required String vehicleNum,
     required String licenseNum,
+    required DateTime licenseExpiry,
     required File licensePhoto,
+    required String conductorName,
+    required String conductorPhone,
+    required File conductorPhoto,
+    required String busNo,
+    required String routeNo,
+    required String routeName,
+    required String depot,
+    required int tripsPerDay,
+    required List<Map<String, dynamic>> trips, // direction, startTime, arrivalTime
     required BuildContext context,
     required Function(String verificationId) onCodeSent,
   }) async {
@@ -35,16 +46,30 @@ class AuthService {
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Optional: auto login if OTP is detected automatically
           await _auth.signInWithCredential(credential);
+
           await _saveDriverData(
             context: context,
             name: name,
+            nic: nic,
+            email: email,
+            password: password,
             birth: birth,
             driverPhoto: driverPhoto,
             phone: phone,
             vehicleType: vehicleType,
             vehicleNum: vehicleNum,
             licenseNum: licenseNum,
+            licenseExpiry: licenseExpiry,
             licensePhoto: licensePhoto,
+            conductorName: conductorName,
+            conductorPhone: conductorPhone,
+            conductorPhoto: conductorPhoto,
+            busNo: busNo,
+            routeNo: routeNo,
+            routeName: routeName,
+            depot: depot,
+            tripsPerDay: tripsPerDay,
+            trips: trips,
           );
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -58,7 +83,6 @@ class AuthService {
           );
         },
         codeSent: (String verificationId, int? resendToken) {
-          // OTP sent, pass verificationId to the screen where user enters OTP
           onCodeSent(verificationId);
         },
         codeAutoRetrievalTimeout: (String verificationId) {},
@@ -80,13 +104,26 @@ class AuthService {
     required String verificationId,
     required String otp,
     required String name,
+    required String nic,
+    required String email,
+    required String password,
     required DateTime birth,
     required File driverPhoto,
     required String phone,
     required String vehicleType,
     required String vehicleNum,
     required String licenseNum,
+    required DateTime licenseExpiry,
     required File licensePhoto,
+    required String conductorName,
+    required String conductorPhone,
+    required File conductorPhoto,
+    required String busNo,
+    required String routeNo,
+    required String routeName,
+    required String depot,
+    required int tripsPerDay,
+    required List<Map<String, dynamic>> trips,
     required BuildContext context,
   }) async {
     try {
@@ -95,69 +132,107 @@ class AuthService {
         smsCode: otp,
       );
 
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
+      await _auth.signInWithCredential(credential);
 
-      // Save driver data after OTP verification
       await _saveDriverData(
         context: context,
         name: name,
+        nic: nic,
+        email: email,
+        password: password,
         birth: birth,
         driverPhoto: driverPhoto,
         phone: phone,
         vehicleType: vehicleType,
         vehicleNum: vehicleNum,
         licenseNum: licenseNum,
+        licenseExpiry: licenseExpiry,
         licensePhoto: licensePhoto,
+        conductorName: conductorName,
+        conductorPhone: conductorPhone,
+        conductorPhoto: conductorPhoto,
+        busNo: busNo,
+        routeNo: routeNo,
+        routeName: routeName,
+        depot: depot,
+        tripsPerDay: tripsPerDay,
+        trips: trips,
       );
-
     } on FirebaseAuthException catch (e) {
       Fluttertoast.showToast(
         msg: e.message ?? "Invalid OTP",
         toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.SNACKBAR,
         backgroundColor: Colors.white,
-        textColor: Colors.green,
+        textColor: Colors.red,
         fontSize: 14,
       );
     }
   }
 
-  /// Private function to upload images and save data in Firestore
+  /// Upload images and save driver data to Firestore
   Future<void> _saveDriverData({
     required BuildContext context,
     required String name,
+    required String nic,
+    required String email,
+    required String password,
     required DateTime birth,
     required File driverPhoto,
     required String phone,
     required String vehicleType,
     required String vehicleNum,
     required String licenseNum,
+    required DateTime licenseExpiry,
     required File licensePhoto,
+    required String conductorName,
+    required String conductorPhone,
+    required File conductorPhoto,
+    required String busNo,
+    required String routeNo,
+    required String routeName,
+    required String depot,
+    required int tripsPerDay,
+    required List<Map<String, dynamic>> trips,
   }) async {
     try {
       String uid = _auth.currentUser!.uid;
 
-      // Upload driver photo
-      UploadTask driverPhotoTask = _storage.ref('drivers/$uid/driverPhoto.jpg').putFile(driverPhoto);
-      TaskSnapshot driverPhotoSnapshot = await driverPhotoTask;
-      String driverPhotoUrl = await driverPhotoSnapshot.ref.getDownloadURL();
+      // Upload images
+      final driverPhotoUrl = await (await _storage.ref('drivers/$uid/driverPhoto.jpg').putFile(driverPhoto)).ref.getDownloadURL();
+      final licensePhotoUrl = await (await _storage.ref('drivers/$uid/licensePhoto.jpg').putFile(licensePhoto)).ref.getDownloadURL();
+      final conductorPhotoUrl = await (await _storage.ref('drivers/$uid/conductorPhoto.jpg').putFile(conductorPhoto)).ref.getDownloadURL();
 
-      // Upload license photo
-      UploadTask licensePhotoTask = _storage.ref('drivers/$uid/licensePhoto.jpg').putFile(licensePhoto);
-      TaskSnapshot licensePhotoSnapshot = await licensePhotoTask;
-      String licensePhotoUrl = await licensePhotoSnapshot.ref.getDownloadURL();
-
-      // Save all data to Firestore
+      // Save all driver info to Firestore
       await _firestore.collection('drivers').doc(uid).set({
-        'name': name,
-        'birth': birth.toIso8601String(),
-        'phone': phone,
-        'vehicleType': vehicleType,
-        'vehicleNum': vehicleNum,
-        'licenseNum': licenseNum,
-        'driverPhotoUrl': driverPhotoUrl,
-        'licensePhotoUrl': licensePhotoUrl,
-        'createdAt': FieldValue.serverTimestamp(),
+        "name": name,
+        "nic": nic,
+        "email": email,
+        "password": password,
+        "birth": birth.toIso8601String(),
+        "phone": phone,
+        "vehicleType": vehicleType,
+        "vehicleNum": vehicleNum,
+        "licenseNum": licenseNum,
+        "licenseExpiry": licenseExpiry.toIso8601String(),
+        "driverPhotoUrl": driverPhotoUrl,
+        "licensePhotoUrl": licensePhotoUrl,
+        "conductorName": conductorName,
+        "conductorPhone": conductorPhone,
+        "conductorPhotoUrl": conductorPhotoUrl,
+        "busNo": busNo,
+        "routeNo": routeNo,
+        "routeName": routeName,
+        "depot": depot,
+        "tripsPerDay": tripsPerDay,
+        "trips": trips
+            .map((t) => {
+                  "direction": t["direction"],
+                  "startTime": t["startTime"].text,
+                  "arrivalTime": t["arrivalTime"].text,
+                })
+            .toList(),
+        "createdAt": FieldValue.serverTimestamp(),
       });
 
       Fluttertoast.showToast(
@@ -171,7 +246,7 @@ class AuthService {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const DriverAppHomeScreen()),
+        MaterialPageRoute(builder: (_) => const DriverAppHomeScreen()),
       );
     } catch (e) {
       Fluttertoast.showToast(
@@ -190,7 +265,7 @@ class AuthService {
     await _auth.signOut();
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => DriverLoginScreen()),
+      MaterialPageRoute(builder: (_) => DriverLoginScreen()),
     );
   }
 }
