@@ -203,6 +203,8 @@ class AuthService {
       final licensePhotoUrl = await (await _storage.ref('drivers/$uid/licensePhoto.jpg').putFile(licensePhoto)).ref.getDownloadURL();
       final conductorPhotoUrl = await (await _storage.ref('drivers/$uid/conductorPhoto.jpg').putFile(conductorPhoto)).ref.getDownloadURL();
 
+
+
       // Save all driver info to Firestore
       await _firestore.collection('drivers').doc(uid).set({
         "name": name,

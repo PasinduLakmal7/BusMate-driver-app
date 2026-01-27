@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 // Removed import to avoid circular dependency with login.dart
 
@@ -42,12 +43,6 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   File? licensePhoto;
   File? conductorPhoto;
 
-  // Dynamic trips list
-  List<Map<String, dynamic>> trips = [];
-
-  // Store available directions dynamically
-  List<String> availableDirections = [];
-
   InputDecoration input(String hint) => InputDecoration(
     hintText: hint,
     hintStyle: const TextStyle(color: Colors.white70),
@@ -63,29 +58,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Auto-generate trips when tripsCtrl changes
-    tripsCtrl.addListener(() {
-      final text = tripsCtrl.text;
-      if (text.isNotEmpty) {
-        int numTrips = int.tryParse(text) ?? 0;
-        if (numTrips != trips.length) {
-          trips = List.generate(numTrips, (index) {
-            return {
-              "direction": null,
-              "startTime": TextEditingController(),
-              "arrivalTime": TextEditingController(),
-            };
-          });
-          setState(() {});
-        }
-      } else {
-        if (trips.isNotEmpty) {
-          trips = [];
-          setState(() {});
-        }
-      }
-    });
+    // Trips functionality disabled - Section 4 is commented out
   }
 
   @override
@@ -144,11 +117,11 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     const SizedBox(height: 12),
                     field(passwordCtrl, "Password", obscure: true),
                     const SizedBox(height: 12),
-                    imageField(
-                      label: "Driver Profile Photo",
-                      onSaved: (f) => driverPhoto = f,
-                    ),
 
+                    // imageField(
+                    //   label: "Driver Profile Photo",
+                    //   onSaved: (f) => driverPhoto = f,
+                    // ),
                     section("2. Driving & Identity Verification"),
                     field(licenseNoCtrl, "Driving License Number"),
                     const SizedBox(height: 12),
@@ -157,127 +130,128 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       label: "License Expiry Date",
                     ),
                     const SizedBox(height: 12),
-                    imageField(
-                      label: "License Photo",
-                      onSaved: (f) => licensePhoto = f,
-                    ),
 
+                    // imageField(
+                    //   label: "License Photo",
+                    //   onSaved: (f) => licensePhoto = f,
+                    // ),
                     section("3. Conductor Details"),
                     field(conductorNameCtrl, "Conductor Name"),
                     const SizedBox(height: 12),
                     field(conductorPhoneCtrl, "Conductor Contact"),
                     const SizedBox(height: 12),
-                    imageField(
-                      label: "Conductor Photo",
-                      onSaved: (f) => conductorPhoto = f,
-                    ),
+                    // imageField(
+                    //   label: "Conductor Photo",
+                    //   onSaved: (f) => conductorPhoto = f,
+                    // ),
 
-                    section("4. Bus & Route Details"),
-                    field(busNoCtrl, "Bus Number"),
-                    const SizedBox(height: 12),
-                    dropdown(
-                      value: busType,
-                      hint: "Bus Type",
-                      items: ["AC", "Non-AC", "School", "Private", "CTB"],
-                      onChanged: (v) => setState(() => busType = v),
-                    ),
-                    const SizedBox(height: 12),
-                    field(routeNoCtrl, "Route Number"),
-                    const SizedBox(height: 12),
-                    dropdown(
-                      value: routeName,
-                      hint: "Route Name",
-                      items: [
-                        "Badulla - Colombo",
-                        "Kandy - Colombo",
-                        "Badulla - Bandarawela",
-                        "Bandarawela - Welimada",
-                        "Galkissa - Kottawa",
-                      ],
-                      onChanged: (v) {
-                        setState(() {
-                          routeName = v;
-                          if (v != null) {
-                            var parts = v.split(" - ");
-                            availableDirections = [
-                              "${parts[0]} - ${parts[1]}",
-                              "${parts[1]} - ${parts[0]}",
-                            ];
-                            for (var trip in trips) {
-                              trip["direction"] = null;
-                            }
-                          } else {
-                            availableDirections = [];
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    field(depotCtrl, "Depot / Company Name"),
-                    const SizedBox(height: 12),
-                    field(tripsCtrl, "Trips Per Day"),
-                    const SizedBox(height: 16),
-
-                    // ---------- Dynamic Time Table ----------
-                    if (trips.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      const Text(
-                        "Time Table",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ...trips.asMap().entries.map((entry) {
-                        int idx = entry.key;
-                        var trip = entry.value;
-                        return Container(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(
-                              255,
-                              83,
-                              83,
-                              83,
-                            ).withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Trip ${idx + 1}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              dropdown(
-                                value: trip["direction"],
-                                hint: "Direction",
-                                items: availableDirections,
-                                onChanged: (v) =>
-                                    setState(() => trip["direction"] = v),
-                              ),
-                              const SizedBox(height: 8),
-                              timePickerField(
-                                controller: trip["startTime"],
-                                label: "Start Time",
-                              ),
-                              const SizedBox(height: 8),
-                              timePickerField(
-                                controller: trip["arrivalTime"],
-                                label: "Arrival Time",
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ],
-
+                    // ---------- COMMENTED OUT SECTION 4 FOR DEMO ----------
+                    // section("4. Bus & Route Details"),
+                    // field(busNoCtrl, "Bus Number"),
+                    // const SizedBox(height: 12),
+                    // dropdown(
+                    //   value: busType,
+                    //   hint: "Bus Type",
+                    //   items: ["AC", "Non-AC", "School", "Private", "CTB"],
+                    //   onChanged: (v) => setState(() => busType = v),
+                    // ),
+                    // const SizedBox(height: 12),
+                    // field(routeNoCtrl, "Route Number"),
+                    // const SizedBox(height: 12),
+                    // dropdown(
+                    //   value: routeName,
+                    //   hint: "Route Name",
+                    //   items: [
+                    //     "Badulla - Colombo",
+                    //     "Kandy - Colombo",
+                    //     "Badulla - Bandarawela",
+                    //     "Bandarawela - Welimada",
+                    //     "Galkissa - Kottawa",
+                    //   ],
+                    //   onChanged: (v) {
+                    //     setState(() {
+                    //       routeName = v;
+                    //       if (v != null) {
+                    //         var parts = v.split(" - ");
+                    //         availableDirections = [
+                    //           "${parts[0]} - ${parts[1]}",
+                    //           "${parts[1]} - ${parts[0]}",
+                    //         ];
+                    //         for (var trip in trips) {
+                    //           trip["direction"] = null;
+                    //         }
+                    //       } else {
+                    //         availableDirections = [];
+                    //       }
+                    //     });
+                    //   },
+                    // ),
+                    // const SizedBox(height: 12),
+                    // field(depotCtrl, "Depot / Company Name"),
+                    // const SizedBox(height: 12),
+                    // field(tripsCtrl, "Trips Per Day"),
+                    // const SizedBox(height: 16),
+                    //
+                    // // ---------- Dynamic Time Table ----------
+                    // if (trips.isNotEmpty) ...[
+                    //   const SizedBox(height: 24),
+                    //   const Text(
+                    //     "Time Table",
+                    //     style: TextStyle(
+                    //       fontSize: 18,
+                    //       fontWeight: FontWeight.bold,
+                    //       color: Colors.white,
+                    //     ),
+                    //   ),
+                    //   const SizedBox(height: 12),
+                    //   ...trips.asMap().entries.map((entry) {
+                    //     int idx = entry.key;
+                    //     var trip = entry.value;
+                    //     return Container(
+                    //       margin: const EdgeInsets.symmetric(vertical: 8),
+                    //       padding: const EdgeInsets.all(12),
+                    //       decoration: BoxDecoration(
+                    //         color: const Color.fromARGB(
+                    //           255,
+                    //           83,
+                    //           83,
+                    //           83,
+                    //         ).withOpacity(0.9),
+                    //         borderRadius: BorderRadius.circular(12),
+                    //       ),
+                    //       child: Column(
+                    //         crossAxisAlignment: CrossAxisAlignment.start,
+                    //         children: [
+                    //           Text(
+                    //             "Trip ${idx + 1}",
+                    //             style: const TextStyle(
+                    //               fontWeight: FontWeight.bold,
+                    //             ),
+                    //           ),
+                    //           const SizedBox(height: 8),
+                    //           dropdown(
+                    //             value: trip["direction"],
+                    //             hint: "Direction",
+                    //             items: availableDirections,
+                    //             onChanged: (v) =>
+                    //                 setState(() => trip["direction"] = v),
+                    //           ),
+                    //           const SizedBox(height: 8),
+                    //           timePickerField(
+                    //             controller: trip["startTime"],
+                    //             label: "Start Time",
+                    //           ),
+                    //           const SizedBox(height: 8),
+                    //           timePickerField(
+                    //             controller: trip["arrivalTime"],
+                    //             label: "Arrival Time",
+                    //           ),
+                    //         ],
+                    //       ),
+                    //     );
+                    //   }).toList(),
+                    // ],
+                    // ---------- END COMMENTED SECTION ----------
                     const SizedBox(height: 24),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -357,7 +331,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
       controller: controller,
       readOnly: true,
       decoration: input(label),
-      validator: (v) => v!.isEmpty ? "Required" : null,
+      validator: (v) => null,
       onTap: () async {
         DateTime? pickedDate = await showDatePicker(
           context: context,
@@ -385,7 +359,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
       child: DropdownButtonFormField(
         value: value,
         onChanged: onChanged,
-        validator: (v) => v == null ? "Required" : null,
+        validator: (v) => null,
         items: items
             .map(
               (e) => DropdownMenuItem(
@@ -407,7 +381,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
       controller: controller,
       readOnly: true,
       decoration: input(label),
-      validator: (v) => v!.isEmpty ? "Required" : null,
+      validator: (v) => null,
       onTap: () async {
         TimeOfDay? pickedTime = await showTimePicker(
           context: context,
@@ -475,89 +449,150 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
+  // ---------- Helper: Safe image upload ----------
+  Future<String> _uploadImage(File? imageFile, String uid, String name) async {
+    if (imageFile == null) {
+      print("DEBUG: No $name to upload");
+      return "";
+    }
+
+    try {
+      print("DEBUG: Uploading $name...");
+      final ref = FirebaseStorage.instance.ref("drivers/$uid/$name");
+      await ref.putFile(imageFile);
+      final url = await ref.getDownloadURL();
+      print("DEBUG: $name URL: $url");
+      return url;
+    } catch (e) {
+      print("DEBUG: Error uploading $name: $e");
+      return "";
+    }
+  }
+
   // ---------- Submit Function ----------
   void submit() async {
     if (_formKey.currentState!.validate()) {
-      if (driverPhoto == null ||
-          licensePhoto == null ||
-          conductorPhoto == null) {
-        Fluttertoast.showToast(msg: "Please upload all required photos");
-        return;
-      }
-
       try {
-        String driverPhotoUrl = "";
-        String licensePhotoUrl = "";
-        String conductorPhotoUrl = "";
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
+        );
 
-        final storage = FirebaseStorage.instance;
+        // Step 1: Create user with Firebase Auth
+        print("DEBUG: Creating user with email: ${emailCtrl.text.trim()}");
+        UserCredential userCred = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: emailCtrl.text.trim(),
+              password: passwordCtrl.text,
+            );
+        String uid = userCred.user!.uid;
+        print("DEBUG: User created with UID: $uid");
 
-        // Upload images
-        driverPhotoUrl =
-            await (await storage
-                    .ref("drivers/${phoneCtrl.text}/driver.jpg")
-                    .putFile(driverPhoto!))
-                .ref
-                .getDownloadURL();
-        licensePhotoUrl =
-            await (await storage
-                    .ref("drivers/${phoneCtrl.text}/license.jpg")
-                    .putFile(licensePhoto!))
-                .ref
-                .getDownloadURL();
-        conductorPhotoUrl =
-            await (await storage
-                    .ref("drivers/${phoneCtrl.text}/conductor.jpg")
-                    .putFile(conductorPhoto!))
-                .ref
-                .getDownloadURL();
+        // Step 2: Upload images to Firebase Storage (safely)
+        final driverPhotoUrl = await _uploadImage(
+          driverPhoto,
+          uid,
+          "driver.jpg",
+        );
+        final licensePhotoUrl = await _uploadImage(
+          licensePhoto,
+          uid,
+          "license.jpg",
+        );
+        final conductorPhotoUrl = await _uploadImage(
+          conductorPhoto,
+          uid,
+          "conductor.jpg",
+        );
 
-        // Save data to Firestore
+        // Step 3: Build driver data map (type-safe)
+        final String name = nameCtrl.text.trim();
+        final String nic = nicCtrl.text.trim();
+        final String phone = phoneCtrl.text.trim();
+        final String email = emailCtrl.text.trim();
+        final String licenseNo = licenseNoCtrl.text.trim();
+        final String licenseExpiry = licenseExpiryCtrl.text.trim();
+        final String conductorName = conductorNameCtrl.text.trim();
+        final String conductorPhone = conductorPhoneCtrl.text.trim();
+        final String busNo = busNoCtrl.text.trim();
+        final String routeNo = routeNoCtrl.text.trim();
+        final String depot = depotCtrl.text.trim();
+        final String tripsPerDay = tripsCtrl.text.trim();
+        final String busTypeValue = busType ?? "";
+        final String routeNameValue = routeName ?? "";
+
+        // Build the map with explicit types
+        final Map<String, dynamic> driverData = <String, dynamic>{
+          "uid": uid,
+          "name": name,
+          "nic": nic,
+          "phone": phone,
+          "email": email,
+          "licenseNo": licenseNo,
+          "licenseExpiry": licenseExpiry,
+          "conductorName": conductorName,
+          "conductorPhone": conductorPhone,
+          "busNo": busNo,
+          "busType": busTypeValue,
+          "routeNo": routeNo,
+          "routeName": routeNameValue,
+          "depot": depot,
+          "tripsPerDay": tripsPerDay,
+          "driverPhotoUrl": driverPhotoUrl,
+          "licensePhotoUrl": licensePhotoUrl,
+          "conductorPhotoUrl": conductorPhotoUrl,
+          "createdAt": FieldValue.serverTimestamp(),
+        };
+
+        // Step 4: Save to Firestore
+        print("DEBUG: Saving driver data to Firestore for UID: $uid");
         await FirebaseFirestore.instance
             .collection("drivers")
-            .doc(phoneCtrl.text)
-            .set({
-              "name": nameCtrl.text,
-              "nic": nicCtrl.text,
-              "phone": phoneCtrl.text,
-              "email": emailCtrl.text,
-              "password": passwordCtrl.text,
-              "licenseNo": licenseNoCtrl.text,
-              "licenseExpiry": licenseExpiryCtrl.text,
-              "conductorName": conductorNameCtrl.text,
-              "conductorPhone": conductorPhoneCtrl.text,
-              "busNo": busNoCtrl.text,
-              "busType": busType,
-              "routeNo": routeNoCtrl.text,
-              "routeName": routeName,
-              "depot": depotCtrl.text,
-              "tripsPerDay": tripsCtrl.text,
-              "trips": trips
-                  .map(
-                    (t) => {
-                      "direction": t["direction"],
-                      "startTime": t["startTime"].text,
-                      "arrivalTime": t["arrivalTime"].text,
-                    },
-                  )
-                  .toList(),
-              "driverPhotoUrl": driverPhotoUrl,
-              "licensePhotoUrl": licensePhotoUrl,
-              "conductorPhotoUrl": conductorPhotoUrl,
-              "createdAt": FieldValue.serverTimestamp(),
-            });
+            .doc(uid)
+            .set(driverData, SetOptions(merge: false));
+
+        print("DEBUG: Driver data saved successfully!");
+
+        // Close loading dialog and go back to login
+        if (mounted) {
+          // Close both dialogs/screens
+          Navigator.of(context).pop(); // Close loading dialog
+          Navigator.of(context).pop(); // Go back to login
+        }
 
         Fluttertoast.showToast(
-          msg: "Driver registered successfully! Please login.",
+          msg: "✅ Registration successful!",
           backgroundColor: Colors.green,
           textColor: Colors.white,
         );
-
-        // Navigate back to previous screen (login) to avoid circular import
-        Navigator.pop(context);
-      } catch (e) {
+      } on FirebaseAuthException catch (e) {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        String errorMsg = "Registration failed";
+        if (e.code == 'weak-password') {
+          errorMsg = "❌ Password too weak (min 6 chars)";
+        } else if (e.code == 'email-already-in-use') {
+          errorMsg = "❌ Email already registered";
+        } else if (e.code == 'invalid-email') {
+          errorMsg = "❌ Invalid email format";
+        }
+        print("DEBUG: Auth error: ${e.code} - ${e.message}");
         Fluttertoast.showToast(
-          msg: "Error: $e",
+          msg: errorMsg,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+      } catch (e) {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        print("DEBUG: Unexpected error: $e");
+        Fluttertoast.showToast(
+          msg: "❌ Error: ${e.toString()}",
           backgroundColor: Colors.red,
           textColor: Colors.white,
         );
