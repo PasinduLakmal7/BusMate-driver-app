@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 import '../View/Auth/login.dart';
 import '../View/home_screen.dart';
@@ -13,7 +12,23 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  /// Step 1: Send OTP to the phone number
+  void showMsg(
+    BuildContext context,
+    String msg, {
+    bool isError = false,
+  }) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? Colors.red : Colors.green,
+      ),
+    );
+  }
+
+  /// Step 1: Send OTP to the phone number (REGISTER FLOW)
   Future<void> registerDriver({
     required String name,
     required String nic,
@@ -73,14 +88,7 @@ class AuthService {
           );
         },
         verificationFailed: (FirebaseAuthException e) {
-          Fluttertoast.showToast(
-            msg: e.message ?? "Phone verification failed",
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.SNACKBAR,
-            backgroundColor: Colors.white,
-            textColor: Colors.red,
-            fontSize: 14,
-          );
+          showMsg(context, e.message ?? "Phone verification failed", isError: true);
         },
         codeSent: (String verificationId, int? resendToken) {
           onCodeSent(verificationId);
@@ -88,18 +96,11 @@ class AuthService {
         codeAutoRetrievalTimeout: (String verificationId) {},
       );
     } catch (e) {
-      Fluttertoast.showToast(
-        msg: "Error: $e",
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.white,
-        textColor: Colors.red,
-        fontSize: 14,
-      );
+      showMsg(context, "Error: $e", isError: true);
     }
   }
 
-  /// Step 2: Verify OTP and save driver data
+  /// Step 2: Verify OTP and save driver data (REGISTER FLOW)
   Future<void> verifyOtpAndSaveDriver({
     required String verificationId,
     required String otp,
@@ -159,18 +160,11 @@ class AuthService {
         trips: trips,
       );
     } on FirebaseAuthException catch (e) {
-      Fluttertoast.showToast(
-        msg: e.message ?? "Invalid OTP",
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.white,
-        textColor: Colors.red,
-        fontSize: 14,
-      );
+      showMsg(context, e.message ?? "Invalid OTP", isError: true);
     }
   }
 
-  /// Upload images and save driver data to Firestore
+  /// Upload images and save driver data to Firestore (REGISTER FLOW)
   Future<void> _saveDriverData({
     required BuildContext context,
     required String name,
@@ -199,18 +193,30 @@ class AuthService {
       String uid = _auth.currentUser!.uid;
 
       // Upload images
-      final driverPhotoUrl = await (await _storage.ref('drivers/$uid/driverPhoto.jpg').putFile(driverPhoto)).ref.getDownloadURL();
-      final licensePhotoUrl = await (await _storage.ref('drivers/$uid/licensePhoto.jpg').putFile(licensePhoto)).ref.getDownloadURL();
-      final conductorPhotoUrl = await (await _storage.ref('drivers/$uid/conductorPhoto.jpg').putFile(conductorPhoto)).ref.getDownloadURL();
+      final driverPhotoUrl = await (await _storage
+              .ref('drivers/$uid/driverPhoto.jpg')
+              .putFile(driverPhoto))
+          .ref
+          .getDownloadURL();
 
+      final licensePhotoUrl = await (await _storage
+              .ref('drivers/$uid/licensePhoto.jpg')
+              .putFile(licensePhoto))
+          .ref
+          .getDownloadURL();
 
+      final conductorPhotoUrl = await (await _storage
+              .ref('drivers/$uid/conductorPhoto.jpg')
+              .putFile(conductorPhoto))
+          .ref
+          .getDownloadURL();
 
       // Save all driver info to Firestore
       await _firestore.collection('drivers').doc(uid).set({
         "name": name,
         "nic": nic,
         "email": email,
-        "password": password,
+        "password": password, // ⚠️ recommended: DON'T store password in Firestore
         "birth": birth.toIso8601String(),
         "phone": phone,
         "vehicleType": vehicleType,
@@ -237,28 +243,80 @@ class AuthService {
         "createdAt": FieldValue.serverTimestamp(),
       });
 
-      Fluttertoast.showToast(
-        msg: "Driver registered successfully!",
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.green,
-        textColor: Colors.white,
-        fontSize: 14,
-      );
+      showMsg(context, "Driver registered successfully!");
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const DriverAppHomeScreen()),
       );
     } catch (e) {
-      Fluttertoast.showToast(
-        msg: "Error saving driver data: $e",
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 14,
+      showMsg(context, "Error saving driver data: $e", isError: true);
+    }
+  }
+
+  // ==========================================================
+  // ✅ ONLY ADDED: LOGIN OTP METHODS (NO FIRESTORE, NO STORAGE)
+  // ==========================================================
+
+  /// Step 1 (LOGIN): Send OTP only
+  Future<void> sendLoginOtp({
+    required String phone,
+    required BuildContext context,
+    required Function(String verificationId) onCodeSent,
+  }) async {
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phone,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await _auth.signInWithCredential(credential);
+
+          if (!context.mounted) return;
+          showMsg(context, "✅ Auto verified & logged in!");
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DriverAppHomeScreen()),
+          );
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          showMsg(context, e.message ?? "Phone verification failed", isError: true);
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          onCodeSent(verificationId);
+          showMsg(context, "✅ OTP sent!");
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {},
       );
+    } catch (e) {
+      showMsg(context, "Error: $e", isError: true);
+    }
+  }
+
+  /// Step 2 (LOGIN): Verify OTP only
+  Future<void> verifyLoginOtp({
+    required String verificationId,
+    required String otp,
+    required BuildContext context,
+  }) async {
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: otp,
+      );
+
+      await _auth.signInWithCredential(credential);
+
+      if (!context.mounted) return;
+      showMsg(context, "✅ Login success!");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DriverAppHomeScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      showMsg(context, e.message ?? "Invalid OTP", isError: true);
+    } catch (e) {
+      showMsg(context, "Error: $e", isError: true);
     }
   }
 
