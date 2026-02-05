@@ -18,6 +18,12 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
   final loc.Location location = loc.Location();
   StreamSubscription<loc.LocationData>? _locationSubscription;
 
+  // ✅ CONNECT BOTH TABLES USING SAME ID
+  // drivers/{driverId}  -> driver details (create once somewhere else)
+  // driver_locations/{driverId} -> live GPS (this file updates)
+  final String driverId =
+      "driver_001"; // later you can replace with FirebaseAuth uid
+
   @override
   void initState() {
     super.initState();
@@ -57,13 +63,13 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
               ),
             ],
           ),
-
           const SizedBox(height: 10),
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
+              // ✅ show live gps table
               stream: FirebaseFirestore.instance
-                  .collection('location')
+                  .collection('driver_locations')
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -82,6 +88,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
                     final doc = snapshot.data!.docs[index];
                     final data = doc.data() as Map<String, dynamic>;
 
+                    // ✅ keep same UI fields
                     final name = data['name']?.toString() ?? "unknown";
                     final lat = data['latitude']?.toString() ?? "-";
                     final lng = data['longitude']?.toString() ?? "-";
@@ -149,11 +156,16 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
       final loc.LocationData locationResult = await location.getLocation();
 
-      await FirebaseFirestore.instance.collection('location').doc('user1').set({
-        'latitude': locationResult.latitude,
-        'longitude': locationResult.longitude,
-        'name': 'pasindu',
-      }, SetOptions(merge: true));
+      // ✅ write ONLY live gps to driver_locations/{driverId}
+      await FirebaseFirestore.instance
+          .collection('driver_locations')
+          .doc(driverId)
+          .set({
+            'latitude': locationResult.latitude,
+            'longitude': locationResult.longitude,
+            'name': 'pasindu',
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (e) {
       debugPrint("Get location error: $e");
     }
@@ -167,13 +179,15 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
       _locationSubscription = location.onLocationChanged.listen(
         (currentLocation) async {
+          // ✅ write ONLY live gps to driver_locations/{driverId}
           await FirebaseFirestore.instance
-              .collection('location')
-              .doc('user1')
+              .collection('driver_locations')
+              .doc(driverId)
               .set({
                 'latitude': currentLocation.latitude,
                 'longitude': currentLocation.longitude,
                 'name': 'pasindu',
+                'updatedAt': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
         },
         onError: (e) async {
