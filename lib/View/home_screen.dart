@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ✅ CHANGE THIS IMPORT to your real profile file path/class
 import './Auth/profile.dart'; // example: lib/View/Auth/profile_screen.dart
@@ -10,10 +12,43 @@ class DriverAppHomeScreen extends ConsumerStatefulWidget {
   const DriverAppHomeScreen({super.key});
 
   @override
-  ConsumerState<DriverAppHomeScreen> createState() => _DriverAppHomeScreenState();
+  ConsumerState<DriverAppHomeScreen> createState() =>
+      _DriverAppHomeScreenState();
 }
 
 class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
+  String driverName = "Driver";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDriverName();
+  }
+
+  Future<void> _loadDriverName() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('drivers')
+          .doc(uid)
+          .get();
+      if (!doc.exists) return;
+
+      final data = doc.data();
+      final name = (data?['name'] ?? "Driver").toString().trim();
+
+      if (mounted) {
+        setState(() {
+          driverName = name.isEmpty ? "Driver" : name;
+        });
+      }
+    } catch (e) {
+      debugPrint("Failed to load driver name: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,6 +69,7 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _TopBar(
+                    driverName: driverName,
                     onProfile: () {
                       Navigator.push(
                         context,
@@ -136,7 +172,9 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
 
 class _TopBar extends StatelessWidget {
   final VoidCallback onProfile;
-  const _TopBar({required this.onProfile});
+  final String driverName;
+
+  const _TopBar({required this.onProfile, required this.driverName});
 
   @override
   Widget build(BuildContext context) {
@@ -156,20 +194,20 @@ class _TopBar extends StatelessWidget {
         const SizedBox(width: 12),
 
         // Name + status
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Hi, Driver 👋",
-                style: TextStyle(
+                "Hi, $driverName 👋",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 2),
-              Text(
+              const SizedBox(height: 2),
+              const Text(
                 "Status: Online",
                 style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
@@ -187,7 +225,9 @@ class _TopBar extends StatelessWidget {
           ),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: Colors.white24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
         ),
@@ -236,10 +276,7 @@ class _MainActionCard extends StatelessWidget {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color.fromARGB(255, 51, 43, 126),
-                    Color(0xFF050724),
-                  ],
+                  colors: [Color.fromARGB(255, 51, 43, 126), Color(0xFF050724)],
                 ),
               ),
               child: ElevatedButton.icon(

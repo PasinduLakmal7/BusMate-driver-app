@@ -18,6 +18,8 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   final emailCtrl = TextEditingController();
   final passwordCtrl = TextEditingController();
 
+  bool loading = false;
+
   InputDecoration input(String hint) => InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white70),
@@ -27,7 +29,8 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
           borderRadius: BorderRadius.circular(50),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       );
 
   @override
@@ -47,6 +50,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
         content: Text(msg),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
+        backgroundColor: ok ? Colors.green : Colors.red,
       ),
     );
   }
@@ -94,7 +98,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    section("Quick Register (Test Firestore)"),
+                    section("Quick Register (Firestore)"),
                     field(nameCtrl, "Full Name"),
                     const SizedBox(height: 12),
                     field(phoneCtrl, "Phone Number"),
@@ -111,8 +115,8 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                         minimumSize: const Size(double.infinity, 50),
                         shape: const StadiumBorder(),
                       ),
-                      onPressed: submit,
-                      child: const Text("Register"),
+                      onPressed: loading ? null : submit,
+                      child: Text(loading ? "Saving..." : "Register"),
                     ),
 
                     const SizedBox(height: 16),
@@ -171,64 +175,71 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
       obscureText: obscure,
       decoration: input(hint),
       validator: (v) => v!.trim().isEmpty ? "Required" : null,
+      style: const TextStyle(color: Colors.white),
     );
   }
 
   // ---------- Submit Function ----------
   void submit() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        print("DEBUG: Starting registration...");
+    if (!_formKey.currentState!.validate()) return;
 
-        // 1) Create user in Firebase Auth
-        UserCredential userCred =
-            await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: emailCtrl.text.trim(),
-          password: passwordCtrl.text.trim(),
-        );
+    setState(() => loading = true);
 
-        String uid = userCred.user!.uid;
-        print("DEBUG: Auth success. UID = $uid");
+    try {
+      print("DEBUG: Starting registration...");
 
-        // 2) Save simple data in Firestore (TEST COLLECTION)
-        final Map<String, dynamic> driverData = <String, dynamic>{
-          "uid": uid,
-          "name": nameCtrl.text.trim(),
-          "phone": phoneCtrl.text.trim(),
-          "email": emailCtrl.text.trim(),
-          "createdAt": FieldValue.serverTimestamp(),
-        };
+      // Format Sri Lanka phone to +94XXXXXXXXX (match your login flow)
+      String clean = phoneCtrl.text.trim().replaceAll(" ", "");
+      if (clean.startsWith("0")) clean = clean.substring(1);
+      final phone = "+94$clean";
 
-        print("DEBUG: Writing to Firestore collection drivers_test...");
-        await FirebaseFirestore.instance
-            .collection("drivers_test")
-            .doc(uid)
-            .set(driverData);
-        print("✅ DEBUG: Firestore write success!");
+      // 1) Create user in Firebase Auth (email+password)
+      UserCredential userCred =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: emailCtrl.text.trim(),
+        password: passwordCtrl.text.trim(),
+      );
 
-        showMsg("✅ Saved to Firestore (drivers_test)!");
+      String uid = userCred.user!.uid;
+      print("DEBUG: Auth success. UID = $uid");
 
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
-      } on FirebaseAuthException catch (e) {
-        print("❌ DEBUG: Firebase Auth error: ${e.code} - ${e.message}");
-        String errorMsg = "Registration failed";
-        if (e.code == 'weak-password') {
-          errorMsg = "❌ Password too weak (min 6 chars)";
-        } else if (e.code == 'email-already-in-use') {
-          errorMsg = "❌ Email already registered";
-        } else if (e.code == 'invalid-email') {
-          errorMsg = "❌ Invalid email format";
-        } else {
-          errorMsg = "❌ ${e.message}";
-        }
+      // 2) Save driver data in Firestore (use SAME collection you will check later)
+      final Map<String, dynamic> driverData = <String, dynamic>{
+        "uid": uid,
+        "name": nameCtrl.text.trim(),
+        "phone": phone,
+        "email": emailCtrl.text.trim(),
+        "createdAt": FieldValue.serverTimestamp(),
+      };
 
-        showMsg(errorMsg, ok: false);
-      } catch (e) {
-        print("❌ DEBUG: Firestore/Other error: $e");
-        showMsg("❌ Firestore error: $e", ok: false);
+      print("DEBUG: Writing to Firestore collection drivers...");
+      await FirebaseFirestore.instance.collection("drivers").doc(uid).set(
+            driverData,
+            SetOptions(merge: true),
+          );
+
+      print("✅ DEBUG: Firestore write success!");
+      showMsg("✅ Saved to Firestore (drivers)!", ok: true);
+
+      if (mounted) Navigator.of(context).pop();
+    } on FirebaseAuthException catch (e) {
+      print("❌ DEBUG: Firebase Auth error: ${e.code} - ${e.message}");
+      String errorMsg = "Registration failed";
+      if (e.code == 'weak-password') {
+        errorMsg = "❌ Password too weak (min 6 chars)";
+      } else if (e.code == 'email-already-in-use') {
+        errorMsg = "❌ Email already registered";
+      } else if (e.code == 'invalid-email') {
+        errorMsg = "❌ Invalid email format";
+      } else {
+        errorMsg = "❌ ${e.message}";
       }
+      showMsg(errorMsg, ok: false);
+    } catch (e) {
+      print("❌ DEBUG: Firestore/Other error: $e");
+      showMsg("❌ Firestore error: $e", ok: false);
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
   }
 }

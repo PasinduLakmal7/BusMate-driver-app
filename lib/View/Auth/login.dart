@@ -10,11 +10,13 @@ class DriverLoginScreen extends StatefulWidget {
 }
 
 class _DriverLoginScreenState extends State<DriverLoginScreen> {
+  final TextEditingController _nameController = TextEditingController(); // ✅ added
   final TextEditingController _phoneController = TextEditingController();
   bool loading = false;
 
   @override
   void dispose() {
+    _nameController.dispose(); // ✅ added
     _phoneController.dispose();
     super.dispose();
   }
@@ -75,6 +77,16 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                   ),
                   const SizedBox(height: 40),
 
+                  // ✅ NEW: name field
+                  TextFormField(
+                    controller: _nameController,
+                    keyboardType: TextInputType.name,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: input("Driver Name"),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
@@ -101,6 +113,12 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                       onPressed: loading
                           ? null
                           : () async {
+                              final nameRaw = _nameController.text.trim(); // ✅ added
+                              if (nameRaw.isEmpty) {
+                                showMsg("Enter driver name");
+                                return;
+                              }
+
                               final raw = _phoneController.text.trim();
                               if (raw.isEmpty) {
                                 showMsg("Enter phone number");
@@ -116,6 +134,20 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                               setState(() => loading = true);
 
                               final auth = AuthService();
+
+                              // ✅ NEW: check name + phone from Firestore before OTP
+                              final ok = await auth.verifyDriverNameAndPhone(
+                                name: nameRaw,
+                                phone: phone,
+                              );
+
+                              if (!ok) {
+                                if (mounted) {
+                                  setState(() => loading = false);
+                                  showMsg("Name or phone not registered");
+                                }
+                                return;
+                              }
 
                               // ✅ Correct method name
                               await auth.sendLoginOtp(

@@ -28,6 +28,42 @@ class AuthService {
     );
   }
 
+  /// ✅ verify name + phone exists in Firestore before sending OTP
+  Future<bool> verifyDriverNameAndPhone({
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      debugPrint("VERIFY: name=$name phone=$phone");
+
+      final snap = await _firestore
+          .collection('drivers')
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
+
+      debugPrint("VERIFY: found docs = ${snap.docs.length}");
+
+      if (snap.docs.isEmpty) {
+        debugPrint("VERIFY FAIL: phone not found in drivers");
+        return false;
+      }
+
+      final data = snap.docs.first.data();
+      final savedName = (data['name'] ?? '').toString().trim();
+
+      debugPrint("VERIFY: savedName=$savedName");
+
+      // case-insensitive compare
+      final ok = savedName.toLowerCase() == name.trim().toLowerCase();
+      debugPrint("VERIFY RESULT: $ok");
+      return ok;
+    } catch (e) {
+      debugPrint("VERIFY ERROR: $e");
+      return false;
+    }
+  }
+
   /// Step 1: Send OTP to the phone number (REGISTER FLOW)
   Future<void> registerDriver({
     required String name,
@@ -255,7 +291,7 @@ class AuthService {
   }
 
   // ==========================================================
-  // ✅ ONLY ADDED: LOGIN OTP METHODS (NO FIRESTORE, NO STORAGE)
+  // ✅ LOGIN OTP METHODS
   // ==========================================================
 
   /// Step 1 (LOGIN): Send OTP only
@@ -265,6 +301,8 @@ class AuthService {
     required Function(String verificationId) onCodeSent,
   }) async {
     try {
+      debugPrint("SEND OTP: phone=$phone");
+
       await _auth.verifyPhoneNumber(
         phoneNumber: phone,
         timeout: const Duration(seconds: 60),
@@ -280,15 +318,20 @@ class AuthService {
           );
         },
         verificationFailed: (FirebaseAuthException e) {
+          debugPrint("OTP FAILED: ${e.code} ${e.message}");
           showMsg(context, e.message ?? "Phone verification failed", isError: true);
         },
         codeSent: (String verificationId, int? resendToken) {
+          debugPrint("OTP SENT: verificationId=$verificationId");
           onCodeSent(verificationId);
           showMsg(context, "✅ OTP sent!");
         },
-        codeAutoRetrievalTimeout: (String verificationId) {},
+        codeAutoRetrievalTimeout: (String verificationId) {
+          debugPrint("OTP TIMEOUT: verificationId=$verificationId");
+        },
       );
     } catch (e) {
+      debugPrint("SEND OTP ERROR: $e");
       showMsg(context, "Error: $e", isError: true);
     }
   }
