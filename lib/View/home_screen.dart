@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // ✅ CHANGE THIS IMPORT to your real profile file path/class
 import './Auth/profile.dart'; // example: lib/View/Auth/profile_screen.dart
 
+import '../Services/gps_haddle.dart';
+
 class DriverAppHomeScreen extends ConsumerStatefulWidget {
   const DriverAppHomeScreen({super.key});
 
@@ -46,9 +48,11 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
 
                   _MainActionCard(
                     onStart: () {
-                      // TODO: open your GPS / map page
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("GPS / Start Trip pressed")),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const GpsHaddlePage(),
+                        ),
                       );
                     },
                   ),

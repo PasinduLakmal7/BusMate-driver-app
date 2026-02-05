@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MyMap extends StatefulWidget {
   final String user_id;
-  MyMap(this.user_id, {super.key});
+  const MyMap(this.user_id, {super.key});
 
   @override
   State<MyMap> createState() => _MyMapState();
