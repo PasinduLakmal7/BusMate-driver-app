@@ -12,8 +12,7 @@ class DriverAppHomeScreen extends ConsumerStatefulWidget {
   const DriverAppHomeScreen({super.key});
 
   @override
-  ConsumerState<DriverAppHomeScreen> createState() =>
-      _DriverAppHomeScreenState();
+  ConsumerState<DriverAppHomeScreen> createState() => _DriverAppHomeScreenState();
 }
 
 class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
@@ -26,28 +25,60 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
   }
 
   Future<void> _loadDriverName() async {
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) return;
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-      final doc = await FirebaseFirestore.instance
-          .collection('drivers')
-          .doc(uid)
-          .get();
-      if (!doc.exists) return;
+    // 1) Try drivers/{uid}
+    final doc1 = await FirebaseFirestore.instance
+        .collection('drivers')
+        .doc(user.uid)
+        .get();
 
-      final data = doc.data();
-      final name = (data?['name'] ?? "Driver").toString().trim();
-
+    if (doc1.exists) {
+      final name = (doc1.data()?['name'] ?? 'Driver').toString().trim();
       if (mounted) {
-        setState(() {
-          driverName = name.isEmpty ? "Driver" : name;
-        });
+        setState(() => driverName = name.isEmpty ? "Driver" : name);
       }
-    } catch (e) {
-      debugPrint("Failed to load driver name: $e");
+      return;
     }
+
+    // 2) Try drivers_test/{uid}
+    final doc2 = await FirebaseFirestore.instance
+        .collection('drivers_test')
+        .doc(user.uid)
+        .get();
+
+    if (doc2.exists) {
+      final name = (doc2.data()?['name'] ?? 'Driver').toString().trim();
+      if (mounted) {
+        setState(() => driverName = name.isEmpty ? "Driver" : name);
+      }
+      return;
+    }
+
+    // 3) Fallback: search by phone (if phone OTP login)
+    final phone = user.phoneNumber;
+    if (phone != null && phone.isNotEmpty) {
+      final snap = await FirebaseFirestore.instance
+          .collection('drivers')
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isNotEmpty) {
+        final name = (snap.docs.first.data()['name'] ?? 'Driver').toString().trim();
+        if (mounted) {
+          setState(() => driverName = name.isEmpty ? "Driver" : name);
+        }
+        return;
+      }
+    }
+  } catch (e) {
+    debugPrint("Failed to load driver name: $e");
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -225,9 +256,7 @@ class _TopBar extends StatelessWidget {
           ),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: Colors.white24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
         ),
@@ -276,7 +305,10 @@ class _MainActionCard extends StatelessWidget {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color.fromARGB(255, 51, 43, 126), Color(0xFF050724)],
+                  colors: [
+                    Color.fromARGB(255, 51, 43, 126),
+                    Color(0xFF050724),
+                  ],
                 ),
               ),
               child: ElevatedButton.icon(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:location/location.dart' as loc;
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'map.dart';
 
@@ -28,6 +29,41 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
   void initState() {
     super.initState();
     _requestPermissionOnce();
+  }
+
+  // ✅ get correct driverId (prefer FirebaseAuth uid, fallback to driver_001)
+  String _driverDocId() {
+    return FirebaseAuth.instance.currentUser?.uid ?? driverId;
+  }
+
+  // ✅ get driver name from drivers/{uid} (fallback: drivers_test/{uid}, else "Driver")
+  Future<String> _getDriverName() async {
+    try {
+      final id = _driverDocId();
+
+      final doc = await FirebaseFirestore.instance
+          .collection('drivers')
+          .doc(id)
+          .get();
+      if (doc.exists) {
+        final name = (doc.data()?['name'] ?? 'Driver').toString().trim();
+        return name.isEmpty ? 'Driver' : name;
+      }
+
+      final doc2 = await FirebaseFirestore.instance
+          .collection('drivers_test')
+          .doc(id)
+          .get();
+      if (doc2.exists) {
+        final name = (doc2.data()?['name'] ?? 'Driver').toString().trim();
+        return name.isEmpty ? 'Driver' : name;
+      }
+
+      return "Driver";
+    } catch (e) {
+      debugPrint("Get driver name error: $e");
+      return "Driver";
+    }
   }
 
   @override
@@ -64,49 +100,39 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
             ],
           ),
           const SizedBox(height: 10),
-
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              // ✅ show live gps table
+            child: StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('driver_locations')
+                  .doc(_driverDocId())
                   .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text("No locations yet"));
+                if (!snapshot.data!.exists) {
+                  return const Center(child: Text("No location yet"));
                 }
 
-                return ListView.builder(
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = snapshot.data!.docs[index];
-                    final data = doc.data() as Map<String, dynamic>;
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                final name = data['name']?.toString() ?? "unknown";
+                final lat = data['latitude']?.toString() ?? "-";
+                final lng = data['longitude']?.toString() ?? "-";
 
-                    // ✅ keep same UI fields
-                    final name = data['name']?.toString() ?? "unknown";
-                    final lat = data['latitude']?.toString() ?? "-";
-                    final lng = data['longitude']?.toString() ?? "-";
-
-                    return ListTile(
-                      title: Text(name),
-                      subtitle: Text("Lat: $lat   Lng: $lng"),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.map),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => MyMap(doc.id)),
-                          );
-                        },
-                      ),
-                    );
-                  },
+                return ListTile(
+                  title: Text(name),
+                  subtitle: Text("Lat: $lat   Lng: $lng"),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.map),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MyMap(_driverDocId()),
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -155,15 +181,17 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
       if (!await _ensureServiceAndPermission()) return;
 
       final loc.LocationData locationResult = await location.getLocation();
+      final id = _driverDocId();
+      final driverName = await _getDriverName();
 
       // ✅ write ONLY live gps to driver_locations/{driverId}
       await FirebaseFirestore.instance
           .collection('driver_locations')
-          .doc(driverId)
+          .doc(id)
           .set({
             'latitude': locationResult.latitude,
             'longitude': locationResult.longitude,
-            'name': 'pasindu',
+            'name': driverName, // ✅ same corresponding user name
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
     } catch (e) {
@@ -177,16 +205,19 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
       await _locationSubscription?.cancel();
 
+      final id = _driverDocId();
+      final driverName = await _getDriverName();
+
       _locationSubscription = location.onLocationChanged.listen(
         (currentLocation) async {
           // ✅ write ONLY live gps to driver_locations/{driverId}
           await FirebaseFirestore.instance
               .collection('driver_locations')
-              .doc(driverId)
+              .doc(id)
               .set({
                 'latitude': currentLocation.latitude,
                 'longitude': currentLocation.longitude,
-                'name': 'pasindu',
+                'name': driverName, // ✅ same corresponding user name
                 'updatedAt': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
         },
