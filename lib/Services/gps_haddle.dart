@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:location/location.dart' as loc;
 
-
+import 'map.dart';
 
 class GpsHaddlePage extends StatefulWidget {
   const GpsHaddlePage({super.key});
@@ -62,7 +62,9 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('location').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('location')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -87,6 +89,15 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
                     return ListTile(
                       title: Text(name),
                       subtitle: Text("Lat: $lat   Lng: $lng"),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.map),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => MyMap(doc.id)),
+                          );
+                        },
+                      ),
                     );
                   },
                 );
@@ -154,17 +165,23 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
       await _locationSubscription?.cancel();
 
-      _locationSubscription = location.onLocationChanged.listen((currentLocation) async {
-        await FirebaseFirestore.instance.collection('location').doc('user1').set({
-          'latitude': currentLocation.latitude,
-          'longitude': currentLocation.longitude,
-          'name': 'pasindu',
-        }, SetOptions(merge: true));
-      }, onError: (e) async {
-        debugPrint("Live location error: $e");
-        await _locationSubscription?.cancel();
-        if (mounted) setState(() => _locationSubscription = null);
-      });
+      _locationSubscription = location.onLocationChanged.listen(
+        (currentLocation) async {
+          await FirebaseFirestore.instance
+              .collection('location')
+              .doc('user1')
+              .set({
+                'latitude': currentLocation.latitude,
+                'longitude': currentLocation.longitude,
+                'name': 'pasindu',
+              }, SetOptions(merge: true));
+        },
+        onError: (e) async {
+          debugPrint("Live location error: $e");
+          await _locationSubscription?.cancel();
+          if (mounted) setState(() => _locationSubscription = null);
+        },
+      );
 
       if (mounted) setState(() {});
     } catch (e) {
