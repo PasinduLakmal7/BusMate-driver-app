@@ -3,11 +3,11 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // 🔧 BusMate Backend URL
-  // ⚠️ For Android Emulator: http://10.0.2.2:4000 (reaches your PC's localhost)
+  // ⚠️ For Android Emulator: h ttp://10.0.2.2:4000 (reaches your PC's localhost)
   // ⚠️ For physical device: http://YOUR_PC_IP:4000 (find IP with: ipconfig)
   static const String baseUrl = "http://10.0.2.2:4000";
 
-  // ✏️ Register endpoint
+  // Register endpoint
   static Future<Map<String, dynamic>> registerDriver({
     required String name,
     required String email,
@@ -97,7 +97,7 @@ class ApiService {
     }
   }
 
-  // ✏️ Login endpoint
+  // Login endpoint
   static Future<Map<String, dynamic>> loginDriver({
     required String email,
     required String password,
@@ -132,7 +132,7 @@ class ApiService {
     }
   }
 
-  // ✏️ Update driver profile
+  // Update driver profile
   static Future<Map<String, dynamic>> updateDriver({
     required String driverId,
     required String token,
@@ -163,7 +163,7 @@ class ApiService {
     }
   }
 
-  // ✏️ Get driver profile
+  // Get driver profile
   static Future<Map<String, dynamic>> getDriver({
     required String driverId,
     required String token,

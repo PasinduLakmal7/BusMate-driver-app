@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../Services/auth_service.dart';
 import './otp_verfy.dart';
 
+// ✅ ADD THIS (change the path to your HomeScreen file)
+import '../home_screen.dart';
+
 class DriverLoginScreen extends StatefulWidget {
   const DriverLoginScreen({super.key});
 
@@ -10,9 +13,12 @@ class DriverLoginScreen extends StatefulWidget {
 }
 
 class _DriverLoginScreenState extends State<DriverLoginScreen> {
-  final TextEditingController _nameController = TextEditingController(); // ✅ added
+  final TextEditingController _nameController = TextEditingController(); //  added
   final TextEditingController _phoneController = TextEditingController();
   bool loading = false;
+
+  // ✅ ADD THIS: set true later when you want OTP login
+  final bool enableOtpLogin = false;
 
   @override
   void dispose() {
@@ -149,7 +155,21 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                                 return;
                               }
 
-                              // ✅ Correct method name
+                              // ✅ ADD THIS: If OTP disabled, go directly to HomeScreen
+                              if (!enableOtpLogin) {
+                                if (!mounted) return;
+                                setState(() => loading = false);
+
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const DriverAppHomeScreen(),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              // ✅ Your OTP code stays (unchanged)
                               await auth.sendLoginOtp(
                                 phone: phone,
                                 context: context,

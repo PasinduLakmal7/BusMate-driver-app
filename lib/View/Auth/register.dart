@@ -51,7 +51,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   List<Map<String, dynamic>> trips = [];
 
   // cloud name
-  static const String cloudinaryCloudName = "dq97kgovy"; 
+  static const String cloudinaryCloudName = "dq97kgovy";
   static const String cloudinaryUploadPreset = "driver_registration";
   bool loading = false;
   final ImagePicker _imagePicker = ImagePicker();
@@ -103,6 +103,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     super.dispose();
   }
 
+  // snake bar messages
   void showMsg(String msg, {bool ok = true}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -116,35 +117,35 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // 🧪 Fill Test Data (for faster testing)
+  // Test Data {fake dataa}
   void fillTestData() {
     setState(() {
-      // 👤 Driver Details
+      // Driver Details
       nameCtrl.text = "John Driver";
       nicCtrl.text = "123456789V";
       phoneCtrl.text = "0712345678";
       emailCtrl.text = "driver@test.com";
       passwordCtrl.text = "Test@1234";
 
-      // 📋 License Details
+      // License Details
       licenseNumCtrl.text = "DL2025001";
       licenseExpiryDate = DateTime(2027, 12, 31);
 
-      // 🚌 Bus Details
+      // Bus Details
       busNumCtrl.text = "WP-AB-1234";
       busTypeCtrl.text = "AC Coach";
       depotCtrl.text = "Main Depot";
 
-      // 👨‍💼 Conductor Details
+      // Conductor Details
       conductorNameCtrl.text = "Ram Conductor";
       conductorNicCtrl.text = "987654321V";
       conductorPhoneCtrl.text = "0787654321";
 
-      // 🛣️ Route Details
+      // Route Details
       routeNumberCtrl.text = "101";
       routeNameCtrl.text = "Colombo - Kandy";
 
-      // ⏱️ Trips
+      // Trips
       tripCount = 2;
       trips.clear();
       trips.add({
@@ -204,7 +205,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // 🧪 Test Data Button
+                    // Test Data add Button
                     Center(
                       child: TextButton.icon(
                         onPressed: fillTestData,
@@ -217,7 +218,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // ============ 👤 DRIVER SECTION ============
+                    // DRIVER SECTION 
                     section("👤 Driver Details"),
                     field(nameCtrl, "Full Name"),
                     const SizedBox(height: 12),
@@ -236,7 +237,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ============ 📋 LICENSE SECTION ============
+                    // LICENSE SECTION
                     section("📋 License Details"),
                     field(licenseNumCtrl, "License Number"),
                     const SizedBox(height: 12),
@@ -249,7 +250,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ============ 🚌 BUS SECTION ============
+                    // BUS SECTION
                     section("🚌 Bus Details"),
                     field(busNumCtrl, "Bus Number"),
                     const SizedBox(height: 12),
@@ -264,7 +265,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ============ 👨‍💼 CONDUCTOR SECTION ============
+                    // CONDUCTOR SECTION
                     section("👨‍💼 Conductor Details (Optional)"),
                     field(conductorNameCtrl, "Conductor Name"),
                     const SizedBox(height: 12),
@@ -279,7 +280,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ============ 🛣️ ROUTE & TRIPS SECTION ============
+                    // ROUTE & TRIPS SECTION 
                     section("🛣️ Route Details"),
                     field(routeNumberCtrl, "Route Number"),
                     const SizedBox(height: 12),
@@ -294,7 +295,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // ============ SUBMIT BUTTON ============
+                    // SUBMIT BUTTON
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromARGB(255, 9, 7, 41),
@@ -308,6 +309,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
 
                     const SizedBox(height: 16),
 
+                    //login link
                     Center(
                       child: GestureDetector(
                         onTap: () {
@@ -343,7 +345,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // ---------- Widgets ----------
+  // Widgets 
   Widget section(String title) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 16),
     child: Text(
@@ -366,7 +368,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // 📅 Date Picker Field for License Expiry
+  // Date Picker Field for License Expiry
   Widget datePickerField(String label, DateTime? selectedDate) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +426,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // ⏱️ Trip Count Input
+  // Trip Count Input
   Widget tripCountInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,7 +472,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // ⏱️ Trip Input Fields (auto-generated)
+  // Trip Input Fields (auto generated)
   Widget tripInputFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,7 +505,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // 🕐 Time Picker Field
+  // Time Picker Field
   Widget timePickerField(String label, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,7 +562,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // 🛣️ Route Direction Dropdown
+  // Route Direction Dropdown
   Widget routeDirectionDropdown(Map<String, dynamic> trip, int index) {
     // Parse route name to generate directions
     List<String> directions = [];
@@ -648,7 +650,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // 🖼️ Image Picker Button
+  // Image Picker Button
   Widget imagePickerButton(
     String label,
     File? imageFile,
@@ -743,7 +745,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // 🎯 Pick image (camera or gallery)
+  // Pick image (camera or gallery)
   Future<void> pickImage(int imageType) async {
     showModalBottomSheet(
       context: context,
@@ -774,7 +776,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     );
   }
 
-  // 📱 Pick from camera or gallery
+  // Pick from camera or gallery
   Future<void> _pickImageFrom(ImageSource source, int imageType) async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -802,7 +804,10 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     }
   }
 
-  // 📤 Upload image to Cloudinary and get URL
+
+
+
+  // Upload image to Cloudinary and get URL
   Future<String?> uploadImageToCloudinary(
     File imageFile,
     String imageName,
@@ -894,7 +899,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     }
   }
 
-  // 🔄 Upload all images to Cloudinary before submission
+  // Upload all images to Cloudinary before submission
   Future<bool> uploadAllImages() async {
     try {
       showMsg("📤 Uploading images to Cloudinary...", ok: true);
@@ -944,7 +949,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     }
   }
 
-  // ---------- Submit Function ----------
+  //  Submit Function 
   void submit() async {
     if (!_formKey.currentState!.validate()) {
       showMsg("❌ Please fill all required fields", ok: false);
@@ -969,7 +974,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     try {
       print("DEBUG: Starting registration...");
 
-      // 📤 Upload all images first
+      // Upload all images first
       print("DEBUG: Uploading images...");
       bool uploadSuccess = await uploadAllImages();
       if (!uploadSuccess) {
@@ -1000,7 +1005,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
         tripsJson = jsonEncode(tripsList);
       }
 
-      // 📤 Send data to BusMate backend (pending_regs table)
+      // Send data to BusMate backend (pending_regs table)
       print("DEBUG: Sending registration to backend...");
       final backendResponse = await ApiService.registerDriver(
         name: nameCtrl.text.trim(),
