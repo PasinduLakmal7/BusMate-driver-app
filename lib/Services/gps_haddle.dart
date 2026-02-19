@@ -7,6 +7,7 @@ import 'package:location/location.dart' as loc;
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'map.dart';
+import 'gps_socket.dart';
 
 class GpsHaddlePage extends StatefulWidget {
   const GpsHaddlePage({super.key});
@@ -18,6 +19,9 @@ class GpsHaddlePage extends StatefulWidget {
 class _GpsHaddlePageState extends State<GpsHaddlePage> {
   final loc.Location location = loc.Location();
   StreamSubscription<loc.LocationData>? _locationSubscription;
+  GpsSocketService? _gpsSocket;
+  String? _jwtToken;
+  bool _socketActive = false;
 
   // ✅ CONNECT BOTH TABLES USING SAME ID
   // drivers/{driverId}  -> driver details (create once somewhere else)
@@ -82,6 +86,28 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
       body: Column(
         children: [
           const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    initialValue: _jwtToken,
+                    decoration: const InputDecoration(
+                      labelText: 'Backend JWT (optional)',
+                      hintText: 'Paste backend JWT to enable socket GPS',
+                    ),
+                    onChanged: (v) =>
+                        _jwtToken = v.trim().isEmpty ? null : v.trim(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _socketActive
+                    ? const Icon(Icons.cloud_done, color: Colors.green)
+                    : const Icon(Icons.cloud_off, color: Colors.red),
+              ],
+            ),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -90,7 +116,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
                 child: const Text("Add once"),
               ),
               ElevatedButton(
-                onPressed: _listenLocation,
+                onPressed: _startLive,
                 child: const Text("Start live"),
               ),
               ElevatedButton(
@@ -194,6 +220,14 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
             'name': driverName, // ✅ same corresponding user name
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
+      // if socket available, also emit once
+      if (_gpsSocket != null && _socketActive) {
+        _gpsSocket!.emitLocation({
+          'lat': locationResult.latitude,
+          'lon': locationResult.longitude,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
     } catch (e) {
       debugPrint("Get location error: $e");
     }
@@ -220,6 +254,14 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
                 'name': driverName, // ✅ same corresponding user name
                 'updatedAt': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
+          // emit via socket if active
+          if (_gpsSocket != null && _socketActive) {
+            _gpsSocket!.emitLocation({
+              'lat': currentLocation.latitude,
+              'lon': currentLocation.longitude,
+              'timestamp': DateTime.now().toIso8601String(),
+            });
+          }
         },
         onError: (e) async {
           debugPrint("Live location error: $e");
@@ -237,6 +279,94 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
   void _stopLocation() async {
     await _locationSubscription?.cancel();
     if (mounted) setState(() => _locationSubscription = null);
+    // stop socket if running
+    await _stopSocket();
+  }
+
+  Future<void> _startLive() async {
+    // If user provided JWT, use socket streaming; otherwise fall back to Firestore updates
+    if (_jwtToken != null && _jwtToken!.isNotEmpty) {
+      await _startSocket();
+      return;
+    }
+
+    // else start local listener that writes to Firestore
+    await _listenLocation();
+  }
+
+  Future<void> _startSocket() async {
+    try {
+      if (!await _ensureServiceAndPermission()) return;
+
+      if (_gpsSocket == null) {
+        _gpsSocket = GpsSocketService(serverUrl: 'http://10.0.2.2:4000');
+      }
+
+      if (_jwtToken == null || _jwtToken!.isEmpty) {
+        // try to get token from FirebaseAuth custom token (if used)
+        final fb = FirebaseAuth.instance.currentUser;
+        if (fb != null) {
+          // this may not be the backend JWT; prompt instead
+        }
+        // ask user to paste token
+        final token = await _promptForToken();
+        if (token == null || token.isEmpty) return;
+        _jwtToken = token;
+      }
+
+      _gpsSocket!.connect(token: _jwtToken!);
+      await _gpsSocket!.startSending();
+      if (mounted) setState(() => _socketActive = true);
+    } catch (e) {
+      debugPrint('Start socket error: $e');
+    }
+  }
+
+  Future<void> _stopSocket() async {
+    try {
+      if (_gpsSocket != null) {
+        _gpsSocket!.stopSending();
+        _gpsSocket!.disconnect();
+        _gpsSocket = null;
+      }
+      if (mounted) setState(() => _socketActive = false);
+    } catch (e) {
+      debugPrint('Stop socket error: $e');
+    }
+  }
+
+  Future<String?> _promptForToken() async {
+    String? input;
+    if (!mounted) return null;
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Enter backend JWT'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: 'Paste JWT here'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                input = controller.text.trim();
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+    return input;
   }
 
   @override

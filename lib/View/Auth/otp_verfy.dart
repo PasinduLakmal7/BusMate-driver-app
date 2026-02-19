@@ -109,10 +109,11 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
 
     final auth = AuthService();
 
-    // ✅ Correct method name
+    // ✅ Pass phone to verify method
     await auth.verifyLoginOtp(
       verificationId: _verificationId,
       otp: otp,
+      phone: widget.phone,
       context: context,
     );
 
@@ -216,7 +217,10 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [Color.fromARGB(255, 35, 29, 95), Color(0xFF050724)],
+                          colors: [
+                            Color.fromARGB(255, 35, 29, 95),
+                            Color(0xFF050724),
+                          ],
                         ),
                       ),
                       child: ElevatedButton(
