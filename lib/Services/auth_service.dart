@@ -1,22 +1,23 @@
 import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../View/Auth/login.dart';
 import '../View/home_screen.dart';
+import 'token_storage.dart';
+import 'gps_socket.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  void showMsg(
-    BuildContext context,
-    String msg, {
-    bool isError = false,
-  }) {
+  void showMsg(BuildContext context, String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -33,33 +34,29 @@ class AuthService {
     required String name,
     required String phone,
   }) async {
+    // Prefer backend drivers table check (not Firestore)
     try {
-      debugPrint("VERIFY: name=$name phone=$phone");
+      debugPrint("VERIFY(backend): name=$name phone=$phone");
+      final uri = Uri.parse('http://10.0.2.2:4000/drivers/check');
+      final resp = await http
+          .post(
+            uri,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"name": name, "phone": phone}),
+          )
+          .timeout(const Duration(seconds: 20));
 
-      final snap = await _firestore
-          .collection('drivers')
-          .where('phone', isEqualTo: phone)
-          .limit(1)
-          .get();
-
-      debugPrint("VERIFY: found docs = ${snap.docs.length}");
-
-      if (snap.docs.isEmpty) {
-        debugPrint("VERIFY FAIL: phone not found in drivers");
+      if (resp.statusCode != 200) {
+        debugPrint('VERIFY backend non-200: ${resp.statusCode} ${resp.body}');
         return false;
       }
 
-      final data = snap.docs.first.data();
-      final savedName = (data['name'] ?? '').toString().trim();
-
-      debugPrint("VERIFY: savedName=$savedName");
-
-      // case-insensitive compare
-      final ok = savedName.toLowerCase() == name.trim().toLowerCase();
-      debugPrint("VERIFY RESULT: $ok");
+      final data = jsonDecode(resp.body);
+      final ok = data['success'] == true && data['exists'] == true;
+      debugPrint('VERIFY backend result: $ok');
       return ok;
     } catch (e) {
-      debugPrint("VERIFY ERROR: $e");
+      debugPrint('VERIFY backend error: $e');
       return false;
     }
   }
@@ -86,7 +83,8 @@ class AuthService {
     required String routeName,
     required String depot,
     required int tripsPerDay,
-    required List<Map<String, dynamic>> trips, // direction, startTime, arrivalTime
+    required List<Map<String, dynamic>>
+    trips, // direction, startTime, arrivalTime
     required BuildContext context,
     required Function(String verificationId) onCodeSent,
   }) async {
@@ -124,7 +122,11 @@ class AuthService {
           );
         },
         verificationFailed: (FirebaseAuthException e) {
-          showMsg(context, e.message ?? "Phone verification failed", isError: true);
+          showMsg(
+            context,
+            e.message ?? "Phone verification failed",
+            isError: true,
+          );
         },
         codeSent: (String verificationId, int? resendToken) {
           onCodeSent(verificationId);
@@ -229,30 +231,34 @@ class AuthService {
       String uid = _auth.currentUser!.uid;
 
       // Upload images
-      final driverPhotoUrl = await (await _storage
-              .ref('drivers/$uid/driverPhoto.jpg')
-              .putFile(driverPhoto))
-          .ref
-          .getDownloadURL();
+      final driverPhotoUrl =
+          await (await _storage
+                  .ref('drivers/$uid/driverPhoto.jpg')
+                  .putFile(driverPhoto))
+              .ref
+              .getDownloadURL();
 
-      final licensePhotoUrl = await (await _storage
-              .ref('drivers/$uid/licensePhoto.jpg')
-              .putFile(licensePhoto))
-          .ref
-          .getDownloadURL();
+      final licensePhotoUrl =
+          await (await _storage
+                  .ref('drivers/$uid/licensePhoto.jpg')
+                  .putFile(licensePhoto))
+              .ref
+              .getDownloadURL();
 
-      final conductorPhotoUrl = await (await _storage
-              .ref('drivers/$uid/conductorPhoto.jpg')
-              .putFile(conductorPhoto))
-          .ref
-          .getDownloadURL();
+      final conductorPhotoUrl =
+          await (await _storage
+                  .ref('drivers/$uid/conductorPhoto.jpg')
+                  .putFile(conductorPhoto))
+              .ref
+              .getDownloadURL();
 
       // Save all driver info to Firestore
       await _firestore.collection('drivers').doc(uid).set({
         "name": name,
         "nic": nic,
         "email": email,
-        "password": password, // ⚠️ recommended: DON'T store password in Firestore
+        "password":
+            password, // ⚠️ recommended: DON'T store password in Firestore
         "birth": birth.toIso8601String(),
         "phone": phone,
         "vehicleType": vehicleType,
@@ -270,11 +276,13 @@ class AuthService {
         "depot": depot,
         "tripsPerDay": tripsPerDay,
         "trips": trips
-            .map((t) => {
-                  "direction": t["direction"],
-                  "startTime": t["startTime"].text,
-                  "arrivalTime": t["arrivalTime"].text,
-                })
+            .map(
+              (t) => {
+                "direction": t["direction"],
+                "startTime": t["startTime"].text,
+                "arrivalTime": t["arrivalTime"].text,
+              },
+            )
             .toList(),
         "createdAt": FieldValue.serverTimestamp(),
       });
@@ -319,7 +327,11 @@ class AuthService {
         },
         verificationFailed: (FirebaseAuthException e) {
           debugPrint("OTP FAILED: ${e.code} ${e.message}");
-          showMsg(context, e.message ?? "Phone verification failed", isError: true);
+          showMsg(
+            context,
+            e.message ?? "Phone verification failed",
+            isError: true,
+          );
         },
         codeSent: (String verificationId, int? resendToken) {
           debugPrint("OTP SENT: verificationId=$verificationId");
@@ -336,29 +348,74 @@ class AuthService {
     }
   }
 
-  /// Step 2 (LOGIN): Verify OTP only
+  /// Step 2 (LOGIN): Verify OTP only + start GPS with JWT from backend
   Future<void> verifyLoginOtp({
     required String verificationId,
     required String otp,
+    required String phone,
     required BuildContext context,
   }) async {
     try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: otp,
-      );
+      // Call backend to verify OTP and get JWT
+      final uri = Uri.parse('http://10.0.2.2:4000/drivers/verify-otp');
+      final resp = await http
+          .post(
+            uri,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"phone": phone, "otp": otp}),
+          )
+          .timeout(const Duration(seconds: 20));
 
-      await _auth.signInWithCredential(credential);
+      debugPrint('OTP verify response: ${resp.statusCode} ${resp.body}');
+
+      if (resp.statusCode != 200) {
+        showMsg(context, "Invalid OTP or server error", isError: true);
+        return;
+      }
+
+      final data = jsonDecode(resp.body);
+      if (data['success'] != true) {
+        showMsg(
+          context,
+          data['error'] ?? "OTP verification failed",
+          isError: true,
+        );
+        return;
+      }
+
+      final token = data['token'] as String?;
+      if (token == null || token.isEmpty) {
+        showMsg(context, "No token received", isError: true);
+        return;
+      }
+
+      // Save JWT to secure storage
+      await TokenStorage.saveToken(token);
+      debugPrint('✅ JWT saved');
+
+      // Auto-start GPS socket with the JWT
+      try {
+        final gpsSocket = GpsSocketService(serverUrl: 'http://10.0.2.2:4000');
+        gpsSocket.connect(token: token);
+        await Future.delayed(const Duration(milliseconds: 500));
+        await gpsSocket.startSending();
+        debugPrint('✅ GPS socket started');
+      } catch (e) {
+        debugPrint('⚠️ GPS socket start error: $e');
+      }
 
       if (!context.mounted) return;
-      showMsg(context, "✅ Login success!");
+      showMsg(
+        context,
+        "✅ Login success! GPS tracking started.",
+        isError: false,
+      );
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const DriverAppHomeScreen()),
       );
-    } on FirebaseAuthException catch (e) {
-      showMsg(context, e.message ?? "Invalid OTP", isError: true);
     } catch (e) {
+      debugPrint('verifyLoginOtp error: $e');
       showMsg(context, "Error: $e", isError: true);
     }
   }

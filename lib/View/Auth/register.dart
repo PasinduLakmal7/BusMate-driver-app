@@ -15,7 +15,7 @@ class DriverRegisterScreen extends StatefulWidget {
 class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // 👤 Driver Details
+  // Driver Details
   final nameCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
@@ -24,33 +24,34 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   File? driverPhotoFile;
   String? driverPhotoUrl;
 
-  // 📋 License Details
+  // License Details
   final licenseNumCtrl = TextEditingController();
   DateTime? licenseExpiryDate;
   File? licensePhotoFile;
   String? licensePhotoUrl;
 
-  // 🚌 Bus Details
+  // Bus Details
   final busNumCtrl = TextEditingController();
   final busTypeCtrl = TextEditingController();
   final depotCtrl = TextEditingController();
   File? busPhotoFile;
   String? busPhotoUrl;
 
-  // 👨‍💼 Conductor Details
+  // Conductor Details
   final conductorNameCtrl = TextEditingController();
   final conductorNicCtrl = TextEditingController();
   final conductorPhoneCtrl = TextEditingController();
   File? conductorPhotoFile;
   String? conductorPhotoUrl;
 
-  // 🛣️ Route & Trips Details
+  // Route & Trips Details
   final routeNumberCtrl = TextEditingController();
   final routeNameCtrl = TextEditingController();
   int tripCount = 0;
   List<Map<String, dynamic>> trips = [];
 
-  static const String cloudinaryCloudName = "dq97kgovy"; // your cloud name
+  // cloud name
+  static const String cloudinaryCloudName = "dq97kgovy"; 
   static const String cloudinaryUploadPreset = "driver_registration";
   bool loading = false;
   final ImagePicker _imagePicker = ImagePicker();
