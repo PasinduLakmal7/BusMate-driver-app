@@ -1,2 +1,0 @@
-hrf[bewuadipedwdw]
-fobdnpamob adnm;
