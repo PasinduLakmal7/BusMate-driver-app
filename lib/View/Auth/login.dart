@@ -17,8 +17,8 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool loading = false;
 
-  // ✅ ADD THIS: set true later when you want OTP login
-  final bool enableOtpLogin = false;
+  // OTP login enabled — uses backend /drivers/request-otp + /drivers/verify-otp
+  final bool enableOtpLogin = true;
 
   @override
   void dispose() {
