@@ -39,7 +39,7 @@ class AuthService {
   }) async {
     try {
       debugPrint("VERIFY(backend): name=$name phone=$phone");
-      final uri = Uri.parse('http://127.0.0.1:4000/drivers/check');
+      final uri = Uri.parse('$_backendBase/drivers/check');
       final resp = await http
           .post(
             uri,

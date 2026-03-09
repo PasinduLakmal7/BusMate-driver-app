@@ -340,7 +340,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
       return false;
     }
 
-    // Use 127.0.0.1 for physical device adb reverse compatibility
+    // 127.0.0.1 works with: adb reverse tcp:4000 tcp:4000
     _gpsSocket ??= GpsSocketService(serverUrl: 'http://127.0.0.1:4000');
 
     if (!_gpsSocket!.isConnected) {
