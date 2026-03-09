@@ -141,16 +141,22 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
 
                               final auth = AuthService();
 
-                              // ✅ NEW: check name + phone from Firestore before OTP
-                              final ok = await auth.verifyDriverNameAndPhone(
+                              // ✅ NEW: check name + phone from backend before OTP
+                              final status = await auth.verifyDriverNameAndPhone(
                                 name: nameRaw,
                                 phone: phone,
                               );
 
-                              if (!ok) {
+                              if (status != 'approved') {
                                 if (mounted) {
                                   setState(() => loading = false);
-                                  showMsg("Name or phone not registered");
+                                  if (status == 'pending') {
+                                    showMsg("Registration is pending admin approval.");
+                                  } else if (status == 'not_found') {
+                                    showMsg("Name or phone not registered.");
+                                  } else {
+                                    showMsg("Verification failed. Please try again.");
+                                  }
                                 }
                                 return;
                               }

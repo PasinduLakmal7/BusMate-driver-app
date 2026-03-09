@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:location/location.dart';
+import 'package:geolocator/geolocator.dart';
 
 class GpsSocketService {
   IO.Socket? _socket;
@@ -29,19 +29,24 @@ class GpsSocketService {
       return;
     }
 
-    Location location = Location();
-    bool serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) serviceEnabled = await location.requestService();
-    PermissionStatus permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return;
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      print('Location services are disabled.');
+      return;
     }
+    
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    if (permission == LocationPermission.deniedForever) return;
 
     _timer?.cancel();
     _timer = Timer.periodic(Duration(milliseconds: intervalMs), (_) async {
       try {
-        final pos = await location.getLocation();
+        final pos = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.bestForNavigation);
         _socket?.emit('location:update', {
           'lat': pos.latitude,
           'lon': pos.longitude,

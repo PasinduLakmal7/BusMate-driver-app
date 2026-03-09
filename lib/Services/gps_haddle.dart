@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:location/location.dart' as loc;
+import 'package:geolocator/geolocator.dart';
 
 import 'gps_socket.dart';
 import 'token_storage.dart';
@@ -20,7 +20,6 @@ class GpsHaddlePage extends StatefulWidget {
 }
 
 class _GpsHaddlePageState extends State<GpsHaddlePage> {
-  final loc.Location _location = loc.Location();
 
   GpsSocketService? _gpsSocket;
   String? _jwtToken;
@@ -38,7 +37,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
   String _debugInfo = '';
 
   // UI poll subscription for status card
-  StreamSubscription<loc.LocationData>? _uiSubscription;
+  StreamSubscription<Position>? _uiSubscription;
 
   @override
   void initState() {
@@ -73,23 +72,25 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
 
   Future<bool> _ensureServiceAndPermission() async {
-    bool serviceEnabled = await _location.serviceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      serviceEnabled = await _location.requestService();
-      if (!serviceEnabled) return false;
+      _showSnack('Location services are disabled.');
+      return false;
     }
 
-    var perm = await _location.hasPermission();
-    if (perm == loc.PermissionStatus.denied) {
-      perm = await _location.requestPermission();
-      if (perm != loc.PermissionStatus.granted) return false;
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showSnack('Location permissions are denied');
+        return false;
+      }
     }
-
-    await _location.changeSettings(
-      accuracy: loc.LocationAccuracy.high,
-      interval: 1000,
-      distanceFilter: 0,
-    );
+    
+    if (permission == LocationPermission.deniedForever) {
+      _showSnack('Location permissions are permanently denied');
+      return false;
+    }
     return true;
   }
 
@@ -280,7 +281,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
     if (!await _ensureSocketConnected()) return;
 
     try {
-      final pos = await _location.getLocation();
+      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       _gpsSocket!.emitLocation({
         'lat': pos.latitude,
         'lon': pos.longitude,
@@ -291,6 +292,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
       _updateDisplay(pos);
     } catch (e) {
       debugPrint('sendOnce error: $e');
+      _showSnack('Location Error: Please ensure GPS/Play Services are enabled.');
     }
   }
 
@@ -304,7 +306,16 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
     // Also update the local UI card from location stream
     await _uiSubscription?.cancel();
-    _uiSubscription = _location.onLocationChanged.listen(_updateDisplay);
+    _uiSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.bestForNavigation),
+    ).listen(
+      _updateDisplay,
+      onError: (e) {
+        debugPrint('Location stream error: $e');
+        _showSnack('Location Error: $e');
+        _stopAll();
+      },
+    );
 
     if (mounted) setState(() => _socketActive = true);
   }
@@ -329,7 +340,8 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
       return false;
     }
 
-    _gpsSocket ??= GpsSocketService(serverUrl: 'http://10.0.2.2:4000');
+    // Use 127.0.0.1 for physical device adb reverse compatibility
+    _gpsSocket ??= GpsSocketService(serverUrl: 'http://127.0.0.1:4000');
 
     if (!_gpsSocket!.isConnected) {
       _gpsSocket!.connect(token: _jwtToken!);
@@ -343,7 +355,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
     return true;
   }
 
-  void _updateDisplay(loc.LocationData pos) {
+  void _updateDisplay(Position pos) {
     if (!mounted) return;
     final now = DateTime.now();
     setState(() {

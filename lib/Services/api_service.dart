@@ -3,9 +3,10 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // 🔧 BusMate Backend URL
-  // ⚠️ For Android Emulator: h ttp://10.0.2.2:4000 (reaches your PC's localhost)
-  // ⚠️ For physical device: http://YOUR_PC_IP:4000 (find IP with: ipconfig)
-  static const String baseUrl = "http://10.0.2.2:4000";
+  // ⚠️ For Android Emulator: http://10.0.2.2:4000
+  // ⚠️ For physical device via USB (adb reverse tcp:4000 tcp:4000): http://127.0.0.1:4000
+  // ⚠️ For physical device via LAN: http://YOUR_PC_IP:4000
+  static const String baseUrl = "http://127.0.0.1:4000";
 
   // Register endpoint
   static Future<Map<String, dynamic>> registerDriver({

@@ -18,7 +18,7 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  static const _backendBase = 'http://10.0.2.2:4000';
+  static const _backendBase = 'http://127.0.0.1:4000';
 
   void showMsg(BuildContext context, String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -32,15 +32,14 @@ class AuthService {
     );
   }
 
-  /// ✅ verify name + phone exists in Firestore before sending OTP
-  Future<bool> verifyDriverNameAndPhone({
+  /// ✅ verify name + phone exists in backend before sending OTP
+  Future<String> verifyDriverNameAndPhone({
     required String name,
     required String phone,
   }) async {
-    // Prefer backend drivers table check (not Firestore)
     try {
       debugPrint("VERIFY(backend): name=$name phone=$phone");
-      final uri = Uri.parse('http://10.0.2.2:4000/drivers/check');
+      final uri = Uri.parse('http://127.0.0.1:4000/drivers/check');
       final resp = await http
           .post(
             uri,
@@ -51,16 +50,21 @@ class AuthService {
 
       if (resp.statusCode != 200) {
         debugPrint('VERIFY backend non-200: ${resp.statusCode} ${resp.body}');
-        return false;
+        return 'error';
       }
 
       final data = jsonDecode(resp.body);
-      final ok = data['success'] == true && data['exists'] == true;
-      debugPrint('VERIFY backend result: $ok');
-      return ok;
+      debugPrint('VERIFY backend result: $data');
+      
+      if (data['success'] == true) {
+        if (data['status'] == 'pending') return 'pending';
+        if (data['exists'] == true) return 'approved';
+        return 'not_found';
+      }
+      return 'error';
     } catch (e) {
       debugPrint('VERIFY backend error: $e');
-      return false;
+      return 'error';
     }
   }
 
