@@ -183,7 +183,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                 ).createShader(rect);
               },
               blendMode: BlendMode.darken,
-              child: Image.asset("assets/regi3.avif", fit: BoxFit.cover),
+              child: Image.asset("assets/back.jpg", fit: BoxFit.cover),
             ),
           ),
           SafeArea(

@@ -6,7 +6,7 @@ class ApiService {
   // ✅ USB debugging (adb reverse tcp:4000 tcp:4000): http://127.0.0.1:4000
   // ⚠️ Android Emulator: http://10.0.2.2:4000
   // ⚠️ Physical device via LAN: http://YOUR_PC_IP:4000
-  static const String baseUrl = "http://127.0.0.1:4000";
+  static const String baseUrl = "http://10.10.25.167:4000";
 
   // Register endpoint
   static Future<Map<String, dynamic>> registerDriver({
@@ -28,7 +28,7 @@ class ApiService {
     String? conductorPhotoUrl,
     String? routeNumber,
     String? routeName,
-    String? tripsJson,
+    String? tripsJson, 
   }) async {
     try {
       final response = await http

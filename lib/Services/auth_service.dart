@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../View/Auth/login.dart';
 import '../View/home_screen.dart';
+import 'api_service.dart';
 import 'token_storage.dart';
 
 class AuthService {
@@ -18,7 +19,7 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  static const _backendBase = 'http://127.0.0.1:4000';
+  static const _backendBase = ApiService.baseUrl;
 
   void showMsg(BuildContext context, String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();

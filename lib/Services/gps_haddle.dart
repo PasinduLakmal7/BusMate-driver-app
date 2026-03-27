@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'gps_socket.dart';
+import 'api_service.dart';
 import 'token_storage.dart';
 
 /// GPS streaming page.
@@ -341,7 +342,7 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
     }
 
     // 127.0.0.1 works with: adb reverse tcp:4000 tcp:4000
-    _gpsSocket ??= GpsSocketService(serverUrl: 'http://127.0.0.1:4000');
+    _gpsSocket ??= GpsSocketService(serverUrl: ApiService.baseUrl);
 
     if (!_gpsSocket!.isConnected) {
       _gpsSocket!.connect(token: _jwtToken!);
