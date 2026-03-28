@@ -1,0 +1,4 @@
+# Mark build and web files as generated so they don't count in language stats
+**/build/** linguist-generated
+web/index.html linguist-generated
+*.html linguist-generated
