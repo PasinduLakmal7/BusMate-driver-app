@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../Services/api_service.dart';
+import '../../Services/token_storage.dart';
 import '../../Services/auth_service.dart';
 import './otp_verfy.dart';
 
@@ -49,6 +51,54 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     );
   }
 
+  void _showSettingsDialog() {
+    final controller = TextEditingController(text: ApiService.baseUrl);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Connection Settings"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Ensure your phone and laptop are on the same WiFi. "
+              "The app tries to find the IP automatically, but you can set it manually here.",
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: "Server URL",
+                hintText: "http://192.168.x.x:4000",
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newUrl = controller.text.trim();
+              if (newUrl.isNotEmpty) {
+                setState(() {
+                  ApiService.baseUrl = newUrl;
+                });
+                TokenStorage.saveServerUrl(newUrl);
+                Navigator.pop(context);
+                showMsg("Server URL updated!", isError: false);
+              }
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,7 +131,31 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                     "Login using your phone number",
                     style: TextStyle(color: Colors.white70),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 10),
+                  // Connection status indicator
+                  GestureDetector(
+                    onTap: _showSettingsDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.settings, size: 14, color: Colors.white70),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Server: ${ApiService.baseUrl.replaceFirst('http://', '')}",
+                            style: const TextStyle(fontSize: 11, color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
 
                   // ✅ NEW: name field
                   TextFormField(

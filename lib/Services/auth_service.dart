@@ -19,7 +19,7 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  static const _backendBase = ApiService.baseUrl;
+  static String get _backendBase => ApiService.baseUrl;
 
   void showMsg(BuildContext context, String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();

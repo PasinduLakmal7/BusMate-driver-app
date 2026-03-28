@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class TokenStorage {
   static const _storage = FlutterSecureStorage();
   static const _tokenKey = 'driver_jwt_token';
+  static const _serverUrlKey = 'driver_server_url';
 
   // In-memory cache — always up-to-date within the current app session
   static String? _memCache;
@@ -31,5 +32,14 @@ class TokenStorage {
   static Future<bool> hasToken() async {
     final token = await getToken();
     return token != null && token.isNotEmpty;
+  }
+
+  // Server URL persistence
+  static Future<void> saveServerUrl(String url) async {
+    await _storage.write(key: _serverUrlKey, value: url);
+  }
+
+  static Future<String?> getServerUrl() async {
+    return await _storage.read(key: _serverUrlKey);
   }
 }

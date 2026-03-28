@@ -1,12 +1,51 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'token_storage.dart';
 
 class ApiService {
-  // 🔧 BusMate Backend URL
-  // ✅ USB debugging (adb reverse tcp:4000 tcp:4000): http://127.0.0.1:4000
-  // ⚠️ Android Emulator: http://10.0.2.2:4000
-  // ⚠️ Physical device via LAN: http://YOUR_PC_IP:4000
-  static const String baseUrl = "http://10.10.25.167:4000";
+  // 🔧 BusMate Backend URL (Dynamic)
+  static String baseUrl = "http://192.168.8.101:4000";
+
+  /// Initialize the API service by loading the saved URL or attempting discovery.
+  static Future<void> init() async {
+    final saved = await TokenStorage.getServerUrl();
+    if (saved != null && saved.isNotEmpty) {
+      baseUrl = saved;
+      print("🚀 Loaded saved server URL: $baseUrl");
+    } else {
+      print("📡 No saved server URL, starting auto-discovery...");
+      autoDiscover(); // Run in background
+    }
+  }
+
+  /// Listens for a UDP broadcast from the backend on port 4001.
+  static void autoDiscover() async {
+    try {
+      final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 4001);
+      socket.listen((RawSocketEvent event) {
+        if (event == RawSocketEvent.read) {
+          final datagram = socket.receive();
+          if (datagram == null) return;
+
+          final message = utf8.decode(datagram.data);
+          final data = jsonDecode(message);
+
+          if (data['service'] == 'busmate-backend') {
+            final newUrl = "http://${datagram.address.address}:${data['port']}";
+            if (baseUrl != newUrl) {
+              baseUrl = newUrl;
+              TokenStorage.saveServerUrl(baseUrl);
+              print("✅ Server discovered at: $baseUrl");
+            }
+            socket.close();
+          }
+        }
+      });
+    } catch (e) {
+      print("❌ UDP Discovery failed: $e");
+    }
+  }
 
   // Register endpoint
   static Future<Map<String, dynamic>> registerDriver({
