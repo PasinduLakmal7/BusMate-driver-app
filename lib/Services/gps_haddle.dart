@@ -1,18 +1,14 @@
 import 'dart:async';
-
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
-
+import 'package:driver_app/Utils/colors.dart';
 import 'gps_socket.dart';
 import 'api_service.dart';
 import 'token_storage.dart';
 
-/// GPS streaming page.
-/// - Reads the JWT from secure storage automatically (saved at login).
-/// - Streams GPS to the Node.js backend via Socket.IO every 1.5 s.
-/// - Backend stores latest position in Redis (real-time) and writes to
-///   bus_locations table every 10 minutes.
 class GpsHaddlePage extends StatefulWidget {
   const GpsHaddlePage({super.key});
 
@@ -21,23 +17,15 @@ class GpsHaddlePage extends StatefulWidget {
 }
 
 class _GpsHaddlePageState extends State<GpsHaddlePage> {
-
   GpsSocketService? _gpsSocket;
   String? _jwtToken;
-
   bool _socketActive = false;
   bool _loadingToken = true;
-
-  // Latest GPS values shown in the status card
   double? _currentLat;
   double? _currentLon;
   double? _currentSpeed;
   String? _lastUpdated;
-
-  // Debug info shown when JWT is missing
   String _debugInfo = '';
-
-  // UI poll subscription for status card
   StreamSubscription<Position>? _uiSubscription;
 
   @override
@@ -49,28 +37,23 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
     });
   }
 
-  // ── Init ─────────────────────────────────────────────────────────────────
-
   Future<void> _requestPermissionOnce() async {
     final status = await Permission.location.request();
     if (status.isPermanentlyDenied) await openAppSettings();
   }
 
-  /// Reads JWT saved by verifyLoginOtp at login time.
   Future<void> _loadStoredToken() async {
     if (mounted) setState(() { _loadingToken = true; _debugInfo = ''; });
     try {
       final token = await TokenStorage.getToken();
       if (token == null || token.isEmpty) {
-        if (mounted) setState(() { _debugInfo = 'No token found.\nPlease log out and log in again.'; });
+        if (mounted) setState(() { _debugInfo = 'Token required.\nPlease log in again.'; });
       }
       if (mounted) setState(() { _jwtToken = token; _loadingToken = false; });
     } catch (e) {
-      debugPrint('_loadStoredToken error: $e');
       if (mounted) setState(() { _loadingToken = false; _debugInfo = 'Error: $e'; });
     }
   }
-
 
   Future<bool> _ensureServiceAndPermission() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -78,280 +61,375 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
       _showSnack('Location services are disabled.');
       return false;
     }
-
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        _showSnack('Location permissions are denied');
-        return false;
-      }
+      if (permission == LocationPermission.denied) return false;
     }
-    
-    if (permission == LocationPermission.deniedForever) {
-      _showSnack('Location permissions are permanently denied');
-      return false;
-    }
+    if (permission == LocationPermission.deniedForever) return false;
     return true;
   }
 
-  // ── UI ────────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('GPS Tracking'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          "LIVE TRACKING",
+          style: GoogleFonts.orbitron(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
+            color: Colors.white,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.stop_circle_outlined),
-            onPressed: _stopAll,
-            tooltip: 'Stop streaming',
+          if (_socketActive)
+            IconButton(
+              icon: const Icon(Icons.stop_circle_outlined, color: Colors.redAccent),
+              onPressed: _stopAll,
+            ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // Background
+          Positioned.fill(
+            child: Image.asset("assets/login3.webp", fit: BoxFit.cover),
+          ),
+          
+          // Gradient & Blur
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.3),
+                    backgroundColor.withOpacity(0.85),
+                    backgroundColor,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+
+          SafeArea(
+            child: _loadingToken
+                ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    child: Column(
+                      children: [
+                        // Connection HUD
+                        buildConnectionHud(),
+                        
+                        const SizedBox(height: 30),
+
+                        // Stats Dashboard
+                        buildStatsDashboard(),
+
+                        const Spacer(),
+
+                        // Info Display
+                        buildInfoDisplay(),
+
+                        const SizedBox(height: 40),
+
+                        // Controls
+                        buildControlBar(),
+                        
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
-      body: _loadingToken
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Status card ──────────────────────────────────────────
-                  Card(
-                    elevation: 3,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              // Socket status dot
-                              Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: _socketActive
-                                      ? Colors.green
-                                      : Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _socketActive
-                                    ? 'Streaming → Socket.IO → Redis'
-                                    : 'Not streaming',
-                                style: theme.textTheme.titleSmall,
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 20),
-                          // JWT info
-                          Row(
-                            children: [
-                              const Icon(Icons.vpn_key, size: 16),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  _jwtToken != null
-                                      ? 'JWT loaded ✓'
-                                      : 'No JWT — login first',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: _jwtToken != null
-                                        ? Colors.green
-                                        : Colors.red,
-                                  ),
-                                ),
-                              ),
-                              if (_jwtToken == null)
-                                TextButton.icon(
-                                  onPressed: () async {
-                                    await _loadStoredToken();
-                                    if (_jwtToken == null && mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Still no token — please log out and log in again'),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(Icons.refresh, size: 16),
-                                  label: const Text('Reload'),
-                                ),
-                            ],
-                          ),
-                          // Debug info when JWT failed — shows phone & error
-                          if (_debugInfo.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  _debugInfo,
-                                  style: const TextStyle(fontSize: 11, color: Colors.orange),
-                                ),
-                              ),
-                            ),
-                          const SizedBox(height: 12),
-                          // Location info
-                          if (_currentLat != null) ...[
-                            Text('Lat: ${_currentLat!.toStringAsFixed(6)}'),
-                            Text('Lon: ${_currentLon!.toStringAsFixed(6)}'),
-                            if (_currentSpeed != null)
-                              Text(
-                                  'Speed: ${(_currentSpeed! * 3.6).toStringAsFixed(1)} km/h'),
-                            if (_lastUpdated != null)
-                              Text(
-                                'Updated: $_lastUpdated',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                          ] else
-                            const Text('No location yet'),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // ── Info box ─────────────────────────────────────────────
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      '📡  GPS pings every 1.5 s → Redis (live display)\n'
-                      '🗄️  bus_locations table updated every 10 min',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // ── Buttons ──────────────────────────────────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _socketActive ? null : _sendOnce,
-                          icon: const Icon(Icons.my_location),
-                          label: const Text('Send Once'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: _socketActive ? null : _startLive,
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Start Live'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _socketActive ? _stopAll : null,
-                    icon: const Icon(Icons.stop),
-                    label: const Text('Stop Streaming'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
     );
   }
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  Widget buildConnectionHud() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Glowing Indicator
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: _socketActive ? Colors.greenAccent : Colors.redAccent,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_socketActive ? Colors.greenAccent : Colors.redAccent).withOpacity(0.5),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                _socketActive ? "STREAMING ACTIVE" : "STREAMING PAUSED",
+                style: GoogleFonts.montserrat(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: _socketActive ? Colors.greenAccent : Colors.white24,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          if (_jwtToken == null) ...[
+            const SizedBox(height: 20),
+            Text(
+              "Access Token Required",
+              style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: _loadStoredToken,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text("Reconnect Profile"),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-  /// Send a single GPS fix via Socket.IO
+  Widget buildStatsDashboard() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: statTile("LATITUDE", _currentLat?.toStringAsFixed(6) ?? "0.000000", Icons.location_on_outlined)),
+            const SizedBox(width: 16),
+            Expanded(child: statTile("LONGITUDE", _currentLon?.toStringAsFixed(6) ?? "0.000000", Icons.explore_outlined)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                "CURRENT SPEED",
+                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blueAccent, letterSpacing: 2),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                textBaseline: TextBaseline.alphabetic,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                children: [
+                  Text(
+                    _currentSpeed == null ? "0.0" : (_currentSpeed! * 3.6).toStringAsFixed(1),
+                    style: GoogleFonts.orbitron(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "KM/H",
+                    style: GoogleFonts.montserrat(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white24),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget statTile(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.blueAccent, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white24, letterSpacing: 1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: GoogleFonts.orbitron(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildInfoDisplay() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.amberAccent.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.amberAccent.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Colors.amberAccent, size: 20),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "TRANSMISSION LOG",
+                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.amberAccent, letterSpacing: 1),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _lastUpdated != null ? "Last transmission: $_lastUpdated" : "Waiting for GPS pulse...",
+                  style: GoogleFonts.inter(color: Colors.white60, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildControlBar() {
+    return Column(
+      children: [
+        if (!_socketActive)
+          Row(
+            children: [
+              Expanded(
+                child: controlBtn(Icons.my_location_rounded, "SEND ONCE", Colors.white10, _sendOnce),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: controlBtn(Icons.play_arrow_rounded, "START LIVE", Colors.blueAccent, _startLive, isPrimary: true),
+              ),
+            ],
+          )
+        else
+          SizedBox(
+            width: double.infinity,
+            child: controlBtn(Icons.stop_rounded, "STOP STREAMING", Colors.redAccent, _stopAll, isPrimary: true),
+          ),
+      ],
+    );
+  }
+
+  Widget controlBtn(IconData icon, String label, Color color, VoidCallback? onTap, {bool isPrimary = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          color: isPrimary ? null : color,
+          gradient: isPrimary ? LinearGradient(colors: [color, color.withOpacity(0.6)]) : null,
+          boxShadow: isPrimary ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10))] : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Logic ───────────────────────────────────────────────────────────────
+
   Future<void> _sendOnce() async {
     if (!await _ensureServiceAndPermission()) return;
     if (!await _ensureSocketConnected()) return;
-
     try {
       final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       _gpsSocket!.emitLocation({
-        'lat': pos.latitude,
-        'lon': pos.longitude,
-        'speed': pos.speed,
-        'heading': pos.heading,
-        'timestamp': DateTime.now().toIso8601String(),
+        'lat': pos.latitude, 'lon': pos.longitude, 'speed': pos.speed, 'heading': pos.heading, 'timestamp': DateTime.now().toIso8601String(),
       });
       _updateDisplay(pos);
     } catch (e) {
-      debugPrint('sendOnce error: $e');
-      _showSnack('Location Error: Please ensure GPS/Play Services are enabled.');
+      _showSnack('Location Error: Please ensure GPS is enabled.');
     }
   }
 
-  /// Start continuous GPS streaming every 1.5 s
   Future<void> _startLive() async {
     if (!await _ensureServiceAndPermission()) return;
     if (!await _ensureSocketConnected()) return;
-
-    // GpsSocketService handles the timer internally
     await _gpsSocket!.startSending(intervalMs: 1500);
-
-    // Also update the local UI card from location stream
     await _uiSubscription?.cancel();
     _uiSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.bestForNavigation),
-    ).listen(
-      _updateDisplay,
-      onError: (e) {
-        debugPrint('Location stream error: $e');
-        _showSnack('Location Error: $e');
-        _stopAll();
-      },
-    );
-
+    ).listen(_updateDisplay, onError: (e) { _stopAll(); });
     if (mounted) setState(() => _socketActive = true);
   }
 
   Future<void> _stopAll() async {
     await _uiSubscription?.cancel();
     _uiSubscription = null;
-
     _gpsSocket?.stopSending();
     _gpsSocket?.disconnect();
     _gpsSocket = null;
-
     if (mounted) setState(() => _socketActive = false);
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  /// Ensures a socket exists and is connected. Returns false if no token.
   Future<bool> _ensureSocketConnected() async {
-    if (_jwtToken == null || _jwtToken!.isEmpty) {
-      _showSnack('No JWT token. Please log in first.');
-      return false;
-    }
-
-    // 127.0.0.1 works with: adb reverse tcp:4000 tcp:4000
+    if (_jwtToken == null || _jwtToken!.isEmpty) { _showSnack('No profile token found.'); return false; }
     _gpsSocket ??= GpsSocketService(serverUrl: ApiService.baseUrl);
-
     if (!_gpsSocket!.isConnected) {
       _gpsSocket!.connect(token: _jwtToken!);
-      // Brief wait for the WebSocket handshake
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!_gpsSocket!.isConnected) {
-        _showSnack('Could not connect to server. Is the backend running?');
-        return false;
-      }
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!_gpsSocket!.isConnected) { _showSnack('Connection failed. Server unreachable.'); return false; }
     }
     return true;
   }
@@ -371,8 +449,12 @@ class _GpsHaddlePageState extends State<GpsHaddlePage> {
 
   void _showSnack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      content: Text(msg, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+      backgroundColor: Colors.redAccent.withOpacity(0.9),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    ));
   }
 
   @override

@@ -1,7 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:driver_app/Utils/colors.dart';
 
 // ✅ CHANGE THIS IMPORT to your real profile file path/class
 import './Auth/profile.dart'; // example: lib/View/Auth/profile_screen.dart
@@ -85,17 +88,41 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background image (optional)
-          SizedBox.expand(
-            child: Image.asset("assets/login3.webp", fit: BoxFit.cover),
+          // Background Image restored
+          Positioned.fill(
+            child: Image.asset(
+              "assets/login3.webp",
+              fit: BoxFit.cover,
+            ),
           ),
 
-          // Dark overlay
-          Container(color: Colors.black.withOpacity(0.65)),
+          // Gradient Overlay & Shader logic
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.4),
+                    backgroundColor.withOpacity(0.8),
+                    backgroundColor,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
 
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -111,7 +138,7 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 30),
 
                   _MainActionCard(
                     onStart: () {
@@ -124,27 +151,28 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 30),
 
-                  const Text(
+                  Text(
                     "Quick Actions",
-                    style: TextStyle(
+                    style: GoogleFonts.montserrat(
                       color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
                     children: [
                       _ActionTile(
-                        icon: Icons.route,
+                        icon: Icons.route_rounded,
                         title: "My Trips",
                         subtitle: "History & schedule",
                         onTap: () {
@@ -154,7 +182,7 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
                         },
                       ),
                       _ActionTile(
-                        icon: Icons.attach_money,
+                        icon: Icons.account_balance_wallet_rounded,
                         title: "Earnings",
                         subtitle: "Daily income",
                         onTap: () {
@@ -164,7 +192,7 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
                         },
                       ),
                       _ActionTile(
-                        icon: Icons.support_agent,
+                        icon: Icons.headset_mic_rounded,
                         title: "Support",
                         subtitle: "Contact help",
                         onTap: () {
@@ -174,7 +202,7 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
                         },
                       ),
                       _ActionTile(
-                        icon: Icons.settings,
+                        icon: Icons.settings_suggest_rounded,
                         title: "Settings",
                         subtitle: "App preferences",
                         onTap: () {
@@ -186,11 +214,11 @@ class _DriverAppHomeScreenState extends ConsumerState<DriverAppHomeScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 30),
 
                   const _StatusCard(),
 
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -213,16 +241,23 @@ class _TopBar extends StatelessWidget {
       children: [
         // Avatar
         Container(
-          width: 46,
-          height: 46,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withOpacity(0.15),
-            border: Border.all(color: Colors.white24),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF3B82F6), Color(0xFF1E3A8A)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blueAccent.withOpacity(0.3),
+                blurRadius: 10,
+              ),
+            ],
           ),
-          child: const Icon(Icons.person, color: Colors.white),
+          child: const Icon(Icons.person, color: Colors.white, size: 28),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
 
         // Name + status
         Expanded(
@@ -231,34 +266,43 @@ class _TopBar extends StatelessWidget {
             children: [
               Text(
                 "Hi, $driverName 👋",
-                style: const TextStyle(
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.montserrat(
                   color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 2),
-              const Text(
-                "Status: Online",
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.greenAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Status: Online",
+                    style: GoogleFonts.inter(
+                      color: Colors.white60,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
 
-        // View profile button
-        OutlinedButton.icon(
+        // Profile Button
+        IconButton(
           onPressed: onProfile,
-          icon: const Icon(Icons.account_circle, color: Colors.white),
-          label: const Text(
-            "View Profile",
-            style: TextStyle(color: Colors.white),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.white24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          ),
+          icon: const Icon(Icons.account_circle_outlined, color: Colors.white70, size: 30),
         ),
       ],
     );
@@ -272,63 +316,80 @@ class _MainActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        color: Colors.white.withOpacity(0.10),
-        border: Border.all(color: Colors.white24),
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.12),
+            Colors.white.withOpacity(0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Ready to start?",
-            style: TextStyle(
+            style: GoogleFonts.montserrat(
               color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            "Turn on GPS and start your trip to track the route.",
-            style: TextStyle(color: Colors.white70, height: 1.4),
+          const SizedBox(height: 10),
+          Text(
+            "Turn on GPS and start your trip to begin tracking your route in real-time.",
+            style: GoogleFonts.inter(
+              color: Colors.white70,
+              height: 1.5,
+              fontSize: 14,
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 24),
 
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: DecoratedBox(
+          GestureDetector(
+            onTap: onStart,
+            child: Container(
+              width: double.infinity,
+              height: 60,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(30),
                 gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color.fromARGB(255, 51, 43, 126),
-                    Color(0xFF050724),
-                  ],
+                  colors: [Color(0xFF3B82F6), Color(0xFF1E3A8A)],
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blueAccent.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              child: ElevatedButton.icon(
-                onPressed: onStart,
-                icon: const Icon(Icons.gps_fixed, color: Colors.white),
-                label: const Text(
-                  "Start GPS / Trip",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.gps_fixed_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Text(
+                    "Start GPS / Trip",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
+                ],
               ),
             ),
           ),
@@ -353,43 +414,49 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: Colors.white.withOpacity(0.10),
-          border: Border.all(color: Colors.white24),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: Colors.white.withOpacity(0.12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            color: Colors.white.withOpacity(0.06),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withOpacity(0.08),
+                ),
+                child: Icon(icon, color: Colors.blueAccent, size: 26),
               ),
-              child: Icon(icon, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
+              const SizedBox(height: 14),
+              Text(
+                title,
+                style: GoogleFonts.montserrat(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: GoogleFonts.inter(
+                  color: Colors.white54,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -402,20 +469,24 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: Colors.white.withOpacity(0.10),
-        border: Border.all(color: Colors.white24),
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.amberAccent.withOpacity(0.05),
+        border: Border.all(color: Colors.amberAccent.withOpacity(0.2)),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.info_outline, color: Colors.white),
-          SizedBox(width: 10),
+          const Icon(Icons.lightbulb_outline_rounded, color: Colors.amberAccent),
+          const SizedBox(width: 16),
           Expanded(
             child: Text(
-              "Tip: Keep GPS ON during the trip for accurate route tracking.",
-              style: TextStyle(color: Colors.white70, height: 1.4),
+              "Keep GPS ON during the trip for accurate route tracking and better results.",
+              style: GoogleFonts.inter(
+                color: Colors.white70,
+                fontSize: 13,
+                height: 1.4,
+              ),
             ),
           ),
         ],

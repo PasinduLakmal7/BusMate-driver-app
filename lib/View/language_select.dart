@@ -1,10 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:driver_app/Utils/colors.dart';
 import '../View/Provider/login_or_register.dart';
 
 class LanguageSelectScreen extends StatelessWidget {
   const LanguageSelectScreen({super.key});
 
   Widget languageButton({
+    required BuildContext context,
     required String title,
     required List<Color> gradient,
     required VoidCallback onTap,
@@ -13,29 +17,30 @@ class LanguageSelectScreen extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        height: 56,
+        height: 62,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: gradient,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(50),
+          borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+              color: gradient.first.withOpacity(0.4),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Center(
           child: Text(
             title,
-            style: const TextStyle(
+            style: GoogleFonts.montserrat(
               fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: Colors.white,
+              letterSpacing: 2,
             ),
           ),
         ),
@@ -46,51 +51,83 @@ class LanguageSelectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          /// -------- Background ----------
-          SizedBox(
-            width: double.infinity,
-            height: double.infinity,
-            child: Image.asset("assets/lang.webp", fit: BoxFit.cover),
+          // Background Image
+          Positioned.fill(
+            child: Image.asset(
+              "assets/lang.webp",
+              fit: BoxFit.cover,
+            ),
           ),
 
-          /// -------- Dark Overlay ----------
-          Container(color: Colors.black.withOpacity(0.65)),
+          // Gradient Overlay & Blur (Shader effect)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.5),
+                    backgroundColor.withOpacity(0.85),
+                    backgroundColor,
+                  ],
+                ),
+              ),
+            ),
+          ),
 
-          /// -------- Content ----------
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 80),
-
-                  /// Greeting
-                  const Text(
-                    "Welcome",
-                    style: TextStyle(
-                      fontSize: 50,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 196, 196, 197),
+                  const SizedBox(height: 40),
+                  
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Colors.white, Color(0xFFCBD5E1)],
+                    ).createShader(bounds),
+                    child: Text(
+                      "Welcome",
+                      style: GoogleFonts.montserrat(
+                        fontSize: 52,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -2,
+                      ),
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 15),
 
-                  const Text(
+                  Text(
                     "Please select your language",
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18, color: Colors.white70),
+                    style: GoogleFonts.inter(
+                      fontSize: 17,
+                      color: Colors.white.withOpacity(0.6),
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 60),
 
-                  /// -------- Language Buttons ----------
                   languageButton(
-                    title: "English",
-                    gradient: const [Color(0xFF1A2980), Color(0xFF26D0CE)],
+                    context: context,
+                    title: "ENGLISH",
+                    gradient: const [Color(0xFF1E40AF), Color(0xFF3B82F6)],
                     onTap: () {
                       Navigator.push(
                         context,
@@ -101,38 +138,45 @@ class LanguageSelectScreen extends StatelessWidget {
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 25),
 
                   languageButton(
+                    context: context,
                     title: "සිංහල",
                     gradient: const [
-                      Color.fromARGB(255, 22, 37, 168),
-                      Color.fromARGB(255, 90, 66, 175),
+                      Color(0xFF312E81),
+                      Color(0xFF4338CA),
                     ],
                     onTap: () {
-                      Navigator.pushReplacementNamed(context, '/driver-login');
+                      Navigator.pushNamed(context, '/driver-login');
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 25),
 
                   languageButton(
+                    context: context,
                     title: "தமிழ்",
                     gradient: const [
-                      Color.fromARGB(255, 96, 20, 167),
-                      Color.fromARGB(255, 85, 67, 167),
+                      Color(0xFF4338CA),
+                      Color(0xFF6366F1),
                     ],
                     onTap: () {
-                      Navigator.pushReplacementNamed(context, '/driver-login');
+                      Navigator.pushNamed(context, '/driver-login');
                     },
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 60),
 
-                  /// Footer
-                  const Text(
+                  Text(
                     "You can change language later in settings",
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white38,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
               ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../Services/auth_service.dart';
+import '../../Utils/colors.dart';
 
 class OtpVerifyScreen extends StatefulWidget {
   final String verificationId;
@@ -144,6 +145,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
           SizedBox.expand(
@@ -154,11 +156,11 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
             child: Container(color: Colors.black.withOpacity(0.35)),
           ),
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: Column(
                 children: [
-                  const SizedBox(height: 18),
+                   const SizedBox(height: 18),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
@@ -273,8 +275,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                     ],
                   ),
 
-                  const Spacer(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),

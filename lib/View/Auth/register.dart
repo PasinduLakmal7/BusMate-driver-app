@@ -1,8 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:driver_app/Utils/colors.dart';
 import '../../Services/api_service.dart';
 
 class DriverRegisterScreen extends StatefulWidget {
@@ -58,14 +61,18 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
 
   InputDecoration input(String hint) => InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: Colors.white70),
+    hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 15),
     filled: true,
-    fillColor: Colors.white.withOpacity(0.25),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(50),
-      borderSide: BorderSide.none,
+    fillColor: Colors.white.withOpacity(0.06),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(24),
+      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
     ),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(24),
+      borderSide: const BorderSide(color: Colors.blueAccent),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
   );
 
   @override
@@ -109,10 +116,10 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg),
-        duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: ok ? Colors.green : Colors.red,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        content: Text(msg, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        backgroundColor: ok ? Colors.greenAccent.withOpacity(0.9) : Colors.redAccent.withOpacity(0.9),
       ),
     );
   }
@@ -166,24 +173,35 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          SizedBox(
-            width: double.infinity,
-            height: double.infinity,
-            child: ShaderMask(
-              shaderCallback: (rect) {
-                return LinearGradient(
-                  colors: [
-                    Colors.black.withOpacity(0.9),
-                    Colors.black.withOpacity(0.5),
-                  ],
+          // Background Image
+          Positioned.fill(
+            child: Image.asset("assets/back.jpg", fit: BoxFit.cover),
+          ),
+          
+          // Shader Overlay
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                ).createShader(rect);
-              },
-              blendMode: BlendMode.darken,
-              child: Image.asset("assets/back.jpg", fit: BoxFit.cover),
+                  colors: [
+                    Colors.black.withOpacity(0.6),
+                    backgroundColor.withOpacity(0.9),
+                    backgroundColor,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
+              child: Container(color: Colors.transparent),
             ),
           ),
           SafeArea(
@@ -194,26 +212,41 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Center(
-                      child: Text(
-                        "Register Here",
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    Center(
+                      child: ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Colors.white, Color(0xFF94A3B8)],
+                        ).createShader(bounds),
+                        child: Text(
+                          "Join the Fleet",
+                          style: GoogleFonts.montserrat(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -1.5,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        "Registration Portal",
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.5),
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
                     // Test Data add Button
                     Center(
                       child: TextButton.icon(
                         onPressed: fillTestData,
-                        icon: const Icon(Icons.data_usage, size: 18),
-                        label: const Text("Fill Test Data"),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.amber,
-                        ),
+                        icon: const Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.amberAccent),
+                        label: Text("Fill Test Data", style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                        style: TextButton.styleFrom(foregroundColor: Colors.amberAccent),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -296,15 +329,47 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     ],
 
                     // SUBMIT BUTTON
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 9, 7, 41),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: const StadiumBorder(),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 60,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blueAccent.withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          ),
+                          onPressed: loading ? null : submit,
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Container(
+                              alignment: Alignment.center,
+                              child: Text(
+                                loading ? "SAVING..." : "COMPLETE REGISTRATION",
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      onPressed: loading ? null : submit,
-                      child: Text(loading ? "Saving..." : "Register"),
                     ),
 
                     const SizedBox(height: 16),
@@ -312,21 +377,14 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                     //login link
                     Center(
                       child: GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
                         child: RichText(
-                          text: const TextSpan(
-                            text: "Already have an account? ",
-                            style: TextStyle(color: Colors.white70),
+                          text: TextSpan(
+                            text: "Already joined? ",
+                            style: GoogleFonts.inter(color: Colors.white38, fontWeight: FontWeight.w500),
                             children: [
                               TextSpan(
                                 text: "Login here",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                ),
+                                style: GoogleFonts.inter(color: Colors.blueAccent, fontWeight: FontWeight.w800, decoration: TextDecoration.underline),
                               ),
                             ],
                           ),
@@ -347,13 +405,14 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
 
   // Widgets 
   Widget section(String title) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 16),
+    padding: const EdgeInsets.only(left: 4, bottom: 20, top: 10),
     child: Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
+      title.toUpperCase(),
+      style: GoogleFonts.montserrat(
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+        color: Colors.blueAccent,
+        letterSpacing: 1.5,
       ),
     ),
   );
@@ -364,7 +423,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
       obscureText: obscure,
       decoration: input(hint),
       validator: (v) => v!.trim().isEmpty ? "Required" : null,
-      style: const TextStyle(color: Colors.white),
+      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500),
     );
   }
 
@@ -397,25 +456,26 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
             }
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(50),
-              border: Border.all(color: Colors.white24),
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today, color: Colors.white70),
-                const SizedBox(width: 12),
+                const Icon(Icons.calendar_month_rounded, color: Colors.blueAccent, size: 22),
+                const SizedBox(width: 15),
                 Text(
                   licenseExpiryDate == null
-                      ? "Select Date"
+                      ? "Select Expiry Date"
                       : "${licenseExpiryDate!.year}-${licenseExpiryDate!.month.toString().padLeft(2, '0')}-${licenseExpiryDate!.day.toString().padLeft(2, '0')}",
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     color: licenseExpiryDate == null
-                        ? Colors.white70
+                        ? Colors.white38
                         : Colors.white,
                     fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -444,9 +504,24 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
           children: [
             Expanded(
               child: TextField(
-                decoration: input("Trip Count"),
+                decoration: InputDecoration(
+                  hintText: "Trip Count",
+                  hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 15),
+                  prefixIcon: const Icon(Icons.confirmation_number_outlined, color: Colors.blueAccent, size: 22),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.06),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: Colors.blueAccent),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                ),
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
+                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500),
                 onChanged: (value) {
                   int count = int.tryParse(value) ?? 0;
                   if (count != tripCount) {
@@ -533,24 +608,24 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(50),
-              border: Border.all(color: Colors.white24),
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.schedule, color: Colors.white70, size: 18),
+                const Icon(Icons.access_time_rounded, color: Colors.blueAccent, size: 18),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     controller.text.isEmpty
                         ? "Select ${label.toLowerCase()}"
                         : controller.text,
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       color: controller.text.isEmpty
-                          ? Colors.white70
+                          ? Colors.white38
                           : Colors.white,
-                      fontSize: 16,
+                      fontSize: 15,
                     ),
                   ),
                 ),
@@ -599,27 +674,27 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.white,
+            color: Colors.white70,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.25),
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: Colors.white24),
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: DropdownButton<String>(
             value: trip['direction'],
             isExpanded: true,
             underline: const SizedBox(),
-            hint: const Text(
+            hint: Text(
               'Select Direction',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+              style: GoogleFonts.inter(color: Colors.white38, fontSize: 16),
             ),
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-            dropdownColor: Colors.grey[800],
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
+            dropdownColor: const Color(0xFF0F172A),
             items: [
               // Placeholder item
               const DropdownMenuItem<String>(
@@ -670,19 +745,19 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white30, width: 2),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.1), width: 1.5),
           ),
           child: Column(
             children: [
               if (imageFile != null)
                 Container(
-                  height: 120,
+                  height: 140,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      topRight: Radius.circular(14),
+                      topLeft: Radius.circular(22),
+                      topRight: Radius.circular(22),
                     ),
                     image: DecorationImage(
                       image: FileImage(imageFile),
@@ -692,46 +767,48 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                 )
               else
                 Container(
-                  height: 120,
+                  height: 140,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      topRight: Radius.circular(14),
+                      topLeft: Radius.circular(22),
+                      topRight: Radius.circular(22),
                     ),
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withOpacity(0.04),
                   ),
-                  child: const Icon(
-                    Icons.image,
-                    color: Colors.white54,
-                    size: 48,
+                  child: Icon(
+                    Icons.camera_alt_outlined,
+                    color: Colors.blueAccent.withOpacity(0.5),
+                    size: 40,
                   ),
                 ),
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.04),
                   borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(14),
-                    bottomRight: Radius.circular(14),
+                    bottomLeft: Radius.circular(22),
+                    bottomRight: Radius.circular(22),
                   ),
                 ),
                 child: MaterialButton(
                   onPressed: onPressed,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(
-                        Icons.add_a_photo,
-                        color: Colors.white,
+                        Icons.add_a_photo_outlined,
+                        color: Colors.blueAccent,
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Text(
-                        imageFile == null ? "Pick Image" : "Change Image",
-                        style: const TextStyle(
+                        imageFile == null ? "Capture / Upload" : "Change Image",
+                        style: GoogleFonts.inter(
                           color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
                         ),
                       ),
                     ],
